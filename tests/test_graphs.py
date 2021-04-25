@@ -20,6 +20,6 @@ def test_fig1():
     assert label_counts[False] == 2
     assert label_counts[None] == 3
 
-    # graph = apta.consistency_graph()
-    # assert len(graph.nodes) == 8
-    # assert len(graph.edges) == 9
+    graph = apta.consistency_graph()
+    assert len(graph.nodes) == 8
+    assert len(graph.edges) == 9

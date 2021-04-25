@@ -49,7 +49,7 @@ class APTA:
         graph = nx.Graph()
         graph.add_nodes_from(self.tree.nodes)
         for pair in combinations(self.tree.nodes, 2):
-            if not can_merge(graph, pair):
+            if not self.can_merge(graph, pair):
                 graph.add_edge(*pair)
 
         return graph
@@ -59,19 +59,25 @@ class APTA:
         # Note: Early terminate if reach two nodes known to be inconsistent.
         #      - edge in graph.edges
         succ = self.tree.neighbors
+        nodes = self.tree.nodes
+
         stack = [pair]
         while stack:
             left, right = stack.pop()
             if (left, right) in graph.edges:
-                return False  # Reach distinguished nodes.
+                return False  # Reached known distinguished nodes.
 
-            # TODO: check labels.
+            left_lbl = nodes[left].get('label')
+            right_lbl = nodes[right].get('label')
+            if None not in {left_lbl, right_lbl} and left_lbl != right_lbl:
+                return False  # Discovered distiguishing path.
 
             # Group neighbors by access token.
-            succ_left = {self.tree.nodes[n]['source'] for n in succ(left)}
-            succ_right = {self.tree.nodes[n]['source'] for n in succ(right)}
+            succ_left = {nodes[n]['source'] for n in succ(left)}
+            succ_right = {nodes[n]['source'] for n in succ(right)}
             merged = fn.merge(succ_left, succ_right)
             
             succ_pairs = [p for p in merged if len(p) > 1]  # Paths
+            stack.extend(succ_pairs)
 
-            # TODO: add to stack
+        return True
