@@ -14,6 +14,7 @@ funcy = "^1.15"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.3"
+pydot = "^1.4.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

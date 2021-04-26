@@ -22,4 +22,5 @@ def test_fig1():
 
     graph = apta.consistency_graph()
     assert len(graph.nodes) == 8
-    assert len(graph.edges) == 9
+    assert len(graph.edges) == 10
+    

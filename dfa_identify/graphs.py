@@ -24,6 +24,7 @@ def transition(tree: nx.DiGraph, node: Node, char: Any) -> Node:
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class APTA:
     """Augmented Prefix Tree Acceptor."""
+    root: Node
     tree: nx.DiGraph
 
     @staticmethod
@@ -43,7 +44,7 @@ class APTA:
             for word in words:
                 tree.nodes[access(word)]['label'] = label
 
-        return APTA(tree)
+        return APTA(root, tree)
 
     def consistency_graph(self) -> nx.Graph:
         graph = nx.Graph()
@@ -51,19 +52,20 @@ class APTA:
         for pair in combinations(self.tree.nodes, 2):
             if not self.can_merge(graph, pair):
                 graph.add_edge(*pair)
-
         return graph
 
     def can_merge(self, graph: nx.Graph, pair: Tuple[Node, Node]) -> bool:
-        # TODO: joint DFS to make sure residual languages are compatible.
-        # Note: Early terminate if reach two nodes known to be inconsistent.
-        #      - edge in graph.edges
         succ = self.tree.neighbors
         nodes = self.tree.nodes
 
-        stack = [pair]
-        while stack:
+        stack, visited = [pair], set()
+        while stack:  # DFS for inconsistency in states.
             left, right = stack.pop()
+
+            if (left, right) in visited:
+                continue
+            visited.add((left, right))
+
             if (left, right) in graph.edges:
                 return False  # Reached known distinguished nodes.
 
@@ -73,11 +75,15 @@ class APTA:
                 return False  # Discovered distiguishing path.
 
             # Group neighbors by access token.
-            succ_left = {nodes[n]['source'] for n in succ(left)}
-            succ_right = {nodes[n]['source'] for n in succ(right)}
-            merged = fn.merge(succ_left, succ_right)
-            
-            succ_pairs = [p for p in merged if len(p) > 1]  # Paths
-            stack.extend(succ_pairs)
+            succ_left = {nodes[n]['source']: n for n in succ(left)}
+            succ_right = {nodes[n]['source']: n for n in succ(right)}
+            merged = list(fn.merge_with(set, succ_left, succ_right).values())
+
+            # Interchange pair[0] and pair[1] is applicable.
+            for p1, p2 in [pair, pair[::-1]]:
+                merged.extend([(p | {p1}) - {p2} for p in merged if p2 in p])
+
+            # Add un-reconciled successors to stack.
+            stack.extend([p for p in merged if len(p) == 2])
 
         return True
