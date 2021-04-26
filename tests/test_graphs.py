@@ -5,10 +5,10 @@ from dfa_identify.graphs import APTA
 
 def test_fig1():
     """Example from fig1 in Heule 2010."""
-    apta = APTA.from_examples({
-        True: ['a', 'abaa', 'bb'],
-        False: ['abb', 'b'],
-    })
+    apta = APTA.from_examples(
+        accepting=['a', 'abaa', 'bb'],
+        rejecting=['abb', 'b'],
+    )
 
     assert len(apta.tree.nodes) == 8
     assert len(apta.tree.edges) == 7

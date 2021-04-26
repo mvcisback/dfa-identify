@@ -28,9 +28,9 @@ class APTA:
     tree: nx.DiGraph
 
     @staticmethod
-    def from_examples(examples: Examples) -> APTA:
+    def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
         # Create prefix tree.
-        tree, root = nx.prefix_tree(chain(*examples.values()))
+        tree, root = nx.prefix_tree(chain(accepting, rejecting))
         tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
 
         def access(word: Word) -> Node:
@@ -40,7 +40,7 @@ class APTA:
             return node
 
         # Augment tree with node labels.
-        for label, words in examples.items():
+        for label, words in [(True, accepting), (False, rejecting)]:
             for word in words:
                 tree.nodes[access(word)]['label'] = label
 
