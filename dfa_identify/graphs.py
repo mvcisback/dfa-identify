@@ -1,7 +1,10 @@
-"""Module for model augmented prefix tree acceptor."""
+"""Module for model augmented prefix tree acceptor and consistency graphs.
+
+See Heule, "Exact DFA Identification Using SAT Solve" for details.
+"""
 from __future__ import annotations
 from itertools import chain, combinations
-from typing import Any
+from typing import Any, Iterable
 
 import attr
 import networkx as nx
@@ -24,11 +27,20 @@ def transition(tree: nx.DiGraph, node: Node, char: Any) -> Node:
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class APTA:
     """Augmented Prefix Tree Acceptor."""
-    root: Node
     tree: nx.DiGraph
+    alphabet: set[Any]
+
+    @property
+    def nodes(self) -> Iterable[Node]:
+        return self.tree.nodes
+
+    @property
+    def root(self) -> Node:
+        return 0
 
     @staticmethod
     def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
+        """Return Augmented Prefix Tree Automata for accepting, rejecting."""
         # Create prefix tree.
         tree, root = nx.prefix_tree(chain(accepting, rejecting))
         tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
@@ -44,17 +56,27 @@ class APTA:
             for word in words:
                 tree.nodes[access(word)]['label'] = label
 
-        return APTA(root, tree)
+        # Label nodes with integers. With root = 0.
+        relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
+        relabels[root] = 0
+        nx.relabel_nodes(tree, relabels, copy=False)
+
+        alphabet = {d['source'] for n, d in tree.nodes(data=True) if n != 0}
+        if None in alphabet:
+            raise ValueError("None not allowed in alphabet.")
+
+        return APTA(tree, alphabet)
 
     def consistency_graph(self) -> nx.Graph:
+        """Return consistency graph for APTA via repeated DFS."""
         graph = nx.Graph()
         graph.add_nodes_from(self.tree.nodes)
         for pair in combinations(self.tree.nodes, 2):
-            if not self.can_merge(graph, pair):
+            if not self._can_merge(graph, pair):
                 graph.add_edge(*pair)
         return graph
 
-    def can_merge(self, graph: nx.Graph, pair: Tuple[Node, Node]) -> bool:
+    def _can_merge(self, graph: nx.Graph, pair: Tuple[Node, Node]) -> bool:
         succ = self.tree.neighbors
         nodes = self.tree.nodes
 

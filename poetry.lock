@@ -150,6 +150,20 @@ sortedcontainers = ">=2.3.0,<3.0.0"
 toposort = ">=1.5,<2.0"
 
 [[package]]
+name = "py-aiger-bv"
+version = "4.6.1"
+description = "A python library for manipulating sequential and-inverter gates."
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+attrs = ">=20.0.0,<21.0.0"
+funcy = ">=1.12,<2.0"
+py-aiger = ">=6.1.2,<7.0.0"
+pyrsistent = ">=0.17,<0.18"
+
+[[package]]
 name = "pydot"
 version = "1.4.2"
 description = "Python interface to Graphviz's Dot"
@@ -232,7 +246,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "8afa75bc2b9e326621b22f484bada3d5df0a1f05bb82066a5463849743ac53d3"
+content-hash = "56be8515929694f9afe61a49b87769c4f787ef6229c4f69eacd44bedfa11b16c"
 
 [metadata.files]
 atomicwrites = [
@@ -285,6 +299,10 @@ py = [
 py-aiger = [
     {file = "py-aiger-6.1.14.tar.gz", hash = "sha256:74b1bc428d0ff7b273bc929d761ce7e55ccc42083350c41a0f8e59d53836e667"},
     {file = "py_aiger-6.1.14-py3-none-any.whl", hash = "sha256:c4e0e44e805dea25dc5baff8e26c6738b4b4084baa6609167d85a134b181e50b"},
+]
+py-aiger-bv = [
+    {file = "py-aiger-bv-4.6.1.tar.gz", hash = "sha256:eae1757b2a12bada8d6fe1c35ef83688aba3f28aa951e5436e5947319a5a3521"},
+    {file = "py_aiger_bv-4.6.1-py3-none-any.whl", hash = "sha256:04bfefeb2c491c4733e5e6400d150f73498a99813f4895d50ad8c795bda2845e"},
 ]
 pydot = [
     {file = "pydot-1.4.2-py2.py3-none-any.whl", hash = "sha256:66c98190c65b8d2e2382a441b4c0edfdb4f4c025ef9cb9874de478fb0793a451"},
