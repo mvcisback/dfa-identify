@@ -16,9 +16,8 @@ def find_dfa(
     for codec, clauses in dfa_id_encodings(apta):
         for clause in clauses:
             solver = Glucose3()
-            for clause in clauses:
-                solver.add_clause(clause)
+            solver.add_clause(clause)
 
-            breakpoint()
-            if solver.solve():
-                return solver.get_model()
+        if solver.solve():
+            model = solver.get_model()
+            return model
