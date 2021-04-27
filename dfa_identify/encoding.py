@@ -4,8 +4,15 @@ from itertools import product
 from typing import Any, NamedTuple, Iterable
 
 import attr
+import funcy as fn
+import networkx as nx
+from networkx.algorithms.approximation.clique import max_clique
 
 from dfa_identify.graphs import APTA, Node
+
+
+Nodes = Iterable[Node]
+Clauses = Iterable[list[int]]
 
 
 class Var(NamedTuple):
@@ -52,7 +59,23 @@ class Codec:
 # ================= Clause Generator =====================
 
 
-Clauses = Iterable[list[int]]
+def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
+    cgraph = apta.consistency_graph()
+    clique = max_clique(cgraph)
+
+    for n_colors in fn.count(len(clique)):
+        codec = Codec.from_apta(apta, n_colors)
+        yield codec, list(encode_dfa_id(apta, codec, clique, cgraph))
+
+
+def encode_dfa_id(apta, codec, clique, cgraph):
+    # Clauses from Table 1.                                      rows
+    yield from onehot_color_clauses(codec)                     # 1, 5
+    yield from partition_by_accepting_clauses(codec, apta)     # 2
+    yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
+    yield from onehot_parent_relation_clauses(codec)           # 4, 6
+    yield from determination_conflicts(codec, cgraph)          # 8
+    yield from symmetry_breaking(codec, clique)
 
 
 def onehot_color_clauses(codec: Codec) -> Clauses:
@@ -84,32 +107,36 @@ def onehot_parent_relation_clauses(codec: Codec) -> Clauses:
                 yield [-lit1, -codec.parent_relation(token, i, j)]
 
 
-def partition_by_accepting_clauses(apta: APTA, codec: Codec) -> Clauses:
+def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
         yield from ([-codec.color_node(n, c), lit] for n in apta.accepting)
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
 
 
-def color_sets_parent_rel_clauses(apta, codec):
+def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
     colors = range(codec.n_colors)
     rev_tree = apta.tree.reverse()
     non_root_nodes = set(apta.nodes) - {0}     # Root doesn't have a parent.
     for node, i, j in product(non_root_nodes, colors, colors):
         parent, *_ = rev_tree.neighbors(node)  # only have 1 parent.
         token = apta.alphabet[apta.nodes[node]['source']]
-        yield [
-            codec.parent_relation(token, i, j),
-            -codec.color_node(parent, i),
-            -codec.color_node(node, j),
-        ]
+
+        parent_color = codec.color_node(parent, i)
+        node_color = codec.color_node(node, j)
+        parent_rel = codec.parent_relation(token, i, j)
+
+        # Parent relation and node color coupled throuh parent color.
+        yield [-parent_color, -node_color, parent_rel]  # 3
+        yield [-parent_color, node_color, -parent_rel]  # 7
 
 
-def encode_dfa_id(apta: APTA, n_colors: int = 1):
-    codec = Codec.from_apta(apta, n_colors)
+def determination_conflicts(codec: Codec, cgraph: nx.Graph) -> Clauses:
+    colors = range(codec.n_colors)
+    for (n1, n2), c in product(cgraph.edges, colors):
+        yield [-codec.color_node(n1, c), -codec.color_node(n2, c)]
 
-    # Clauses from Table 1.                                    rows
-    yield from onehot_color_clauses(codec)                   # 1, 5
-    yield from partition_by_accepting_clauses(apta, codec)   # 2
-    yield from color_sets_parent_rel_clauses(apta, codec)    # 3
-    yield from onehot_parent_relation_clauses(codec)         # 4, 6
+
+def symmetry_breaking(codec: Codec, clique: Nodes) -> Clauses:
+    for node, color in enumerate(clique):
+        yield [codec.color_node(node, color)]

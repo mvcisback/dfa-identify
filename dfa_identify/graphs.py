@@ -13,7 +13,6 @@ from bidict import bidict
 
 
 Word = list[Any]
-Examples = dict[bool, list[Word]]
 Node = Any
 
 

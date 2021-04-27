@@ -162,6 +162,29 @@ toml = "*"
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
 
 [[package]]
+name = "python-sat"
+version = "0.1.7.dev2"
+description = "A Python library for prototyping with SAT oracles"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
+
+[package.extras]
+aiger = ["py-aiger-cnf (>=2.0.0)"]
+pblib = ["pypblib (>=0.0.3)"]
+
+[[package]]
+name = "six"
+version = "1.15.0"
+description = "Python 2 and 3 compatibility utilities"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
@@ -172,7 +195,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "792443f428142d6bc09a59c5f3d92f01aec52f1ddf5f677744a1941fdadb75f5"
+content-hash = "e8acee215d417b21a781ad5b4b071c78e5e3c888a0e37d3c04d27f450580db66"
 
 [metadata.files]
 atomicwrites = [
@@ -230,6 +253,38 @@ pyparsing = [
 pytest = [
     {file = "pytest-6.2.3-py3-none-any.whl", hash = "sha256:6ad9c7bdf517a808242b998ac20063c41532a570d088d77eec1ee12b0b5574bc"},
     {file = "pytest-6.2.3.tar.gz", hash = "sha256:671238a46e4df0f3498d1c3270e5deb9b32d25134c99b7d75370a68cfbe9b634"},
+]
+python-sat = [
+    {file = "python-sat-0.1.7.dev2.tar.gz", hash = "sha256:9a32bd2adea80f8c8f2c079d7ee43a1320de6012a6320ef3f685ce78251c8729"},
+    {file = "python_sat-0.1.7.dev2-cp27-cp27m-macosx_11_2_x86_64.whl", hash = "sha256:611cb373b18a7e15ced5e3b6718eac6ee65f9b05f30a3ecd70cc3db75c699db1"},
+    {file = "python_sat-0.1.7.dev2-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:a8e9e60f665c8ea3205f118a3284243892fe6d4f19d9a3aa7a6067e4cae28102"},
+    {file = "python_sat-0.1.7.dev2-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:3cea3618bb75b5ca3352045964e425bd0f9ea90be804e123f9c24b7aa89275a3"},
+    {file = "python_sat-0.1.7.dev2-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:1f461b78a07a4f7f7ffb8aaf0ed8c9925dbf334340037e7e81b0e9a8111f2db8"},
+    {file = "python_sat-0.1.7.dev2-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:0048a31c580d333f82a90b60df8f143a9686b907a0657b1ea800b3b8d91a0fd6"},
+    {file = "python_sat-0.1.7.dev2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:741b0297948247ce061aa2b9d3deae3997fa86e508f6a27d88bb132626efe8f9"},
+    {file = "python_sat-0.1.7.dev2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:417baf964dc52d870aa737b9a614bd0e857391ac2229eb90c7d6cb6a095bf0a7"},
+    {file = "python_sat-0.1.7.dev2-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:911f0fa3392b92753d80ed31e6789d81fa81b875662d7d9761c3d9707415da4a"},
+    {file = "python_sat-0.1.7.dev2-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:f4c51f6739f6de7c32a7766a02767b2f816dd99f1dd623e31c39d1ded0d0e4c4"},
+    {file = "python_sat-0.1.7.dev2-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:027dbb73151c5d9b584a24d2c0950c6583775617fff574c57b0c5e71c4da13e2"},
+    {file = "python_sat-0.1.7.dev2-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:ba9ed04ab6e13c0ea65a399aafc5cad2c004c65c24ef0597e29680288368525f"},
+    {file = "python_sat-0.1.7.dev2-cp36-cp36m-win_amd64.whl", hash = "sha256:4999556e63baffbd1357ca626e50e8e65f796a6e79c5ab2400ec603cb8365552"},
+    {file = "python_sat-0.1.7.dev2-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:ec944420c221a22814255efb0094edad21a2556b4058c95ef7cefc72cbe9a8fe"},
+    {file = "python_sat-0.1.7.dev2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:add8c508f87466d413616aed29144c19ab11dd48f367fda5733af513b85bd102"},
+    {file = "python_sat-0.1.7.dev2-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:ca74a37a1a45ce9a6fd4474ac35a8c41052b7d0cd8de098a5e579eea99f5f1c8"},
+    {file = "python_sat-0.1.7.dev2-cp37-cp37m-win_amd64.whl", hash = "sha256:1b56402c40b27a9e4d6fa56f4051fb8a248d43d856ae11dc35190e64fd2e918c"},
+    {file = "python_sat-0.1.7.dev2-cp38-cp38-manylinux1_i686.whl", hash = "sha256:09b9879b0b84660029e7cdc553f66c30a2078fab159e8b8b3bf1d20e27b9d840"},
+    {file = "python_sat-0.1.7.dev2-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:9cbac249d2de7fa0f4c883c2182c69a35a6779c1f6b1397e0c1891b7a42c4d0f"},
+    {file = "python_sat-0.1.7.dev2-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:2a4778da978deeccb176627e7163d20b8d38a69895cd376d9ba73cad3c285dda"},
+    {file = "python_sat-0.1.7.dev2-cp38-cp38-win_amd64.whl", hash = "sha256:7dfb93cbfa1e11e968d735836161ac6e8d8a572c24990267233098ddfc599cc7"},
+    {file = "python_sat-0.1.7.dev2-cp39-cp39-macosx_11_0_x86_64.whl", hash = "sha256:34258e6c6aacf534bd718f42888fa687bde36675f76b466077a1360845af9e04"},
+    {file = "python_sat-0.1.7.dev2-cp39-cp39-manylinux1_i686.whl", hash = "sha256:18dca18ab35c31dbe02531a85512fc83ee8d6ba46e0cd2f4a58de7f9bbe0064d"},
+    {file = "python_sat-0.1.7.dev2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:7a7f05d6358908dafb15e9f747dcb5335ee01ef81b7d53f46be8795332ca4a6e"},
+    {file = "python_sat-0.1.7.dev2-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:a9a952cfe94c9e689bbbd777f4de639891529203a7cc599a58eb1d0251154fdc"},
+    {file = "python_sat-0.1.7.dev2-cp39-cp39-win_amd64.whl", hash = "sha256:405bc992b1a776f203886dcdbf289e3e6610341555d1dce88f36726967622117"},
+]
+six = [
+    {file = "six-1.15.0-py2.py3-none-any.whl", hash = "sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced"},
+    {file = "six-1.15.0.tar.gz", hash = "sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
