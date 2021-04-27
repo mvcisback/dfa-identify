@@ -11,11 +11,9 @@ import networkx as nx
 import funcy as fn
 
 
-Label = bool
 Word = list[Any]
 Examples = dict[bool, list[Word]]
 Node = Any
-Nodes = set[Node]
 
 
 def transition(tree: nx.DiGraph, node: Node, char: Any) -> Node:
@@ -37,6 +35,15 @@ class APTA:
     @property
     def root(self) -> Node:
         return 0
+
+    @property
+    def accepting(self) -> set[Node]:
+        return {n for n, d in self.nodes(data=True) if d.get('label')}
+
+    @property
+    def rejecting(self) -> set[Node]:
+        nodes = self.nodes(data=True)
+        return {n for n, d in nodes if not d.get('label', True)}
 
     @staticmethod
     def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
@@ -109,3 +116,6 @@ class APTA:
             stack.extend([p for p in merged if len(p) == 2])
 
         return True
+
+
+__all__ = ['APTA', 'Node', 'Word']

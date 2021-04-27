@@ -14,12 +14,8 @@ def test_fig1():
     assert len(apta.tree.nodes) == 8
     assert len(apta.tree.edges) == 7
 
-    nodes = apta.tree.nodes
-    label_counts = Counter(data.get('label') for _, data in nodes(data=True))
-
-    assert label_counts[True] == 3
-    assert label_counts[False] == 2
-    assert label_counts[None] == 3
+    assert len(apta.accepting) == 3
+    assert len(apta.rejecting) == 2
 
     graph = apta.consistency_graph()
     assert len(graph.nodes) == 8

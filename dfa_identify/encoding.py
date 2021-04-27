@@ -1,4 +1,5 @@
-from typing import Any, NamedTuple
+from itertools import product
+from typing import Any, NamedTuple, Iterable
 
 import attr
 
@@ -8,6 +9,7 @@ from dfa_identify.graphs import APTA, Node
 class Var(NamedTuple):
     color: int
     kind: str
+    idx: int
     true: bool = True
 
 
@@ -25,7 +27,7 @@ class Codec:
             kind = "color_node"
         else:
             kind = "parent_relation"
-        return Var(idx % self.n_colors, kind, lit > 0)
+        return Var(idx % self.n_colors, kind, idx, lit > 0)
 
     def color_accepting(self, color: int) -> int:
         return 1 + color
@@ -38,3 +40,31 @@ class Codec:
         b = a**2
         c = 1 + self.n_colors * (1 + self.n_nodes)
         return color1 + a * color2 + b * token + c
+
+
+# ================= Clause Generator =====================
+
+
+Clauses = Iterable[list[int]]
+
+
+def onehot_color_clauses(codec: Codec) -> Clauses:
+    for n in range(codec.n_nodes):  # Each vertex has at least one color.
+        yield [codec.color_node(n, c) for c in range(code.n_colors)]
+
+    for n in range(codec.n_nodes):  # Each vertex has at most one color.
+        for i in range(codec.n_colors):
+            lit1 = codec.color_node(n, i)
+            for j in range(i + 1, codec.n_colors):
+                lit2 = codec.color_node(n, i)
+                yield [-lit1, -lit2]
+
+
+def accepting_partition_clauses(apta: APTA, codec: Codec) -> Clauses:
+    pass
+
+
+def encode_dfa_id(apta: APTA, n_colors: int = 1):
+    codec = Codec(len(apta.nodes), n_colors)
+
+    yield from onehot_color_clauses(codec)
