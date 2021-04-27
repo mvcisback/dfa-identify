@@ -9,7 +9,7 @@ def test_fig1():
         accepting=['a', 'abaa', 'bb'],
         rejecting=['abb', 'b'],
     )
-    assert apta.alphabet == {'a', 'b'}
+    assert apta.alphabet.keys() == {'a', 'b'}
 
     assert len(apta.tree.nodes) == 8
     assert len(apta.tree.edges) == 7

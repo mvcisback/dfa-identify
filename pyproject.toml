@@ -10,6 +10,7 @@ python = "^3.9"
 attrs = "^20.3.0"
 networkx = "^2.5.1"
 funcy = "^1.15"
+bidict = "^0.21.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.3"

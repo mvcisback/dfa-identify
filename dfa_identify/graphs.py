@@ -9,6 +9,7 @@ from typing import Any, Iterable
 import attr
 import networkx as nx
 import funcy as fn
+from bidict import bidict
 
 
 Word = list[Any]
@@ -26,7 +27,7 @@ def transition(tree: nx.DiGraph, node: Node, char: Any) -> Node:
 class APTA:
     """Augmented Prefix Tree Acceptor."""
     tree: nx.DiGraph
-    alphabet: set[Any]
+    alphabet: bidict  # Mapping from token to int.
 
     @property
     def nodes(self) -> Iterable[Node]:
@@ -38,7 +39,7 @@ class APTA:
 
     @property
     def accepting(self) -> set[Node]:
-        return {n for n, d in self.nodes(data=True) if d.get('label')}
+         return {n for n, d in self.nodes(data=True) if d.get('label')}
 
     @property
     def rejecting(self) -> set[Node]:
@@ -71,6 +72,7 @@ class APTA:
         alphabet = {d['source'] for n, d in tree.nodes(data=True) if n != 0}
         if None in alphabet:
             raise ValueError("None not allowed in alphabet.")
+        alphabet = bidict(enumerate(alphabet)).inv
 
         return APTA(tree, alphabet)
 
