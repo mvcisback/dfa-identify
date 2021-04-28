@@ -9,7 +9,6 @@ Python library for identifying DFAs from labeled examples by reduction to SAT.
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
-- [dfa-identify](#dfa-identify)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Encoding](#encoding)
