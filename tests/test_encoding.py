@@ -2,15 +2,29 @@ from itertools import product
 
 from dfa_identify.graphs import APTA
 from dfa_identify.encoding import Codec, dfa_id_encodings
+from dfa_identify.encoding import (
+    ColorAcceptingVar,
+    ColorNodeVar,
+    ParentRelationVar
+)
+
+
+def kind(var):
+    if isinstance(var, ColorAcceptingVar):
+        return 'color_accepting'
+    elif isinstance(var, ColorNodeVar):
+        return 'color_node'
+    elif isinstance(var, ParentRelationVar):
+        return 'parent_relation'
 
 
 def test_codec():
     codec = Codec(n_nodes=10, n_colors=3, n_tokens=4)
-    assert codec.decode(1).kind == 'color_accepting'
-    assert codec.decode(3).kind == 'color_accepting'
-    assert codec.decode(4).kind == 'color_node'
-    assert codec.decode(33).kind == 'color_node'
-    assert codec.decode(34).kind == 'parent_relation'
+    assert kind(codec.decode(1)) == 'color_accepting'
+    assert kind(codec.decode(3)) == 'color_accepting'
+    assert kind(codec.decode(4)) == 'color_node'
+    assert kind(codec.decode(33)) == 'color_node'
+    assert kind(codec.decode(34)) == 'parent_relation'
 
     colors = range(codec.n_colors)
     nodes = range(codec.n_nodes)
@@ -20,21 +34,31 @@ def test_codec():
     for c in colors:
         lit = codec.color_accepting(c)
         lits.add(lit)
-        assert codec.decode(lit).kind == 'color_accepting'
+        var = codec.decode(lit)
+        assert kind(var) == 'color_accepting'
+        assert var.color == c
     assert len(lits) == 3  # Check bijection.
 
     lits = set()
     for n, c in product(nodes, colors):
         lit = codec.color_node(n, c)
         lits.add(lit)
-        assert codec.decode(lit).kind == 'color_node'
+        var = codec.decode(lit)
+        assert kind(var) == 'color_node'
+        assert var.color == c
+        assert var.node == n
     assert len(lits) == 3 * 10  # Check bijection.
 
     lits = set()
     for t, c1, c2 in product(tokens, colors, colors):
         lit = codec.parent_relation(t, c1, c2)
         lits.add(lit)
-        assert codec.decode(lit).kind == 'parent_relation'
+        var = codec.decode(lit)
+        assert kind(var) == 'parent_relation'
+        assert var.color1 == c1
+        assert var.color2 == c2
+        assert var.token == t
+
     assert len(lits) == 9 * 4  # Check bijection.
     assert max(lits) == 3 + 3 * 10 + 9 * 4
 

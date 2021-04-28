@@ -15,11 +15,25 @@ Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 
 
-class Var(NamedTuple):
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class ColorAcceptingVar:
     color: int
-    kind: str
-    idx: int
-    true: bool = True
+    true: bool
+
+
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class ColorNodeVar:
+    color: int
+    true: bool
+    node: int
+
+
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class ParentRelationVar:
+    color1: int
+    color2: int
+    token: int
+    true: bool
 
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
@@ -32,17 +46,6 @@ class Codec:
     def from_apta(apta: APTA, n_colors: int = 0) -> Codec:
         return Codec(len(apta.nodes), n_colors, len(apta.alphabet))
 
-    def decode(self, lit: int) -> Var:
-        idx = abs(lit) - 1
-        kind_idx = idx // self.n_colors        
-        if kind_idx == 0:
-            kind = "color_accepting"
-        elif 1 <= kind_idx <= self.n_nodes:
-            kind = "color_node"
-        else:
-            kind = "parent_relation"
-        return Var(idx % self.n_colors, kind, idx, lit > 0)
-
     def color_accepting(self, color: int) -> int:
         return 1 + color
 
@@ -54,6 +57,22 @@ class Codec:
         b = a**2
         c = 1 + self.n_colors * (1 + self.n_nodes)
         return color1 + a * color2 + b * token + c
+
+    def decode(self, lit: int) -> Var:
+        idx = abs(lit) - 1
+        color1, true = idx % self.n_colors, lit > 0
+        kind_idx = idx // self.n_colors
+        if kind_idx == 0:
+            return ColorAcceptingVar(color1, true)
+        elif 1 <= kind_idx <= self.n_nodes:
+            node = (idx - color1) // self.n_colors - 1
+            return ColorNodeVar(color1, true, node)
+        tmp = idx - self.n_colors * (1 + self.n_nodes)
+        tmp //= self.n_colors
+        color2 = tmp % self.n_colors
+        token = tmp // self.n_colors
+        return ParentRelationVar(color1, color2, token, true)
+            
 
 
 # ================= Clause Generator =====================
