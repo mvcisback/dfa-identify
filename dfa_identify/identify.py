@@ -71,3 +71,6 @@ def find_dfa(
                 model = solver.get_model()
                 return extract_dfa(codec, apta, model)
                 return model
+
+
+__all__ = ['find_dfa', 'extract_dfa']

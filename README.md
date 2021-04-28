@@ -32,17 +32,13 @@ The returned `DFA` object is from the [dfa](https://github.com/mvcisback/dfa) li
 from dfa_identify import find_dfa
 
 
-def test_identify():
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
+accepting = ['a', 'abaa', 'bb']
+rejecting = ['abb', 'b']
     
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
 
-    for x in accepting:
-        assert my_dfa.label(x)
-
-    for x in rejecting:
-        assert not my_dfa.label(x)
+assert all(my_dfa.label(x) for x in accepting)
+assert all(not my_dfa.label(x) for x in rejecting)
 ```
 
 Because words are sequences of arbitrary python objects, the
@@ -50,16 +46,10 @@ identification problem, with `a` ↦ 0 and `b` ↦ 1, is given below:
 
 
 ```python
-    accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
-    rejecting = [[0, 'z', 'z'], ['z']]
-    
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
+rejecting = [[0, 'z', 'z'], ['z']]
 
-    for x in accepting:
-        assert my_dfa.label(x)
-
-    for x in rejecting:
-        assert not my_dfa.label(x)
+my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
 ```
 
 # Encoding
