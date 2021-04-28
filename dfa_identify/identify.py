@@ -61,6 +61,18 @@ def find_dfa(
         rejecting: list[Word],
         solver_fact=Glucose4, 
 ) -> Optional[DFA]:
+    """Finds a minimal dfa that is consistent with the labeled examples.
+
+    Inputs:
+      - accepting: A sequence of "words" to be accepted.
+      - rejecting: A sequence of "words" to be rejected.
+      - solver: A py-sat API compatible object for solving CNF SAT queries.
+
+    Returns:
+      Either a DFA consistent with accepting and rejecting or None
+      indicating that no DFA exists.
+    """
+    
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
     for codec, clauses in dfa_id_encodings(apta):
         with solver_fact() as solver:
