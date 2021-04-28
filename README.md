@@ -1,5 +1,7 @@
 # dfa-identify
-Python library for identifying DFAs from labeled examples by reduction to SAT.
+Python library for identifying (learning) DFAs from labeled examples
+by reduction to SAT.
+
 
 [![Build Status](https://cloud.drone.io/api/badges/mvcisback/dfa-identify/status.svg)](https://cloud.drone.io/mvcisback/dfa-identify)
 [![Docs](https://img.shields.io/badge/API-link-color)](https://mvcisback.github.io/dfa-identify)
