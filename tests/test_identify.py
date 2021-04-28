@@ -12,3 +12,15 @@ def test_identify():
 
     for x in rejecting:
         assert not my_dfa.label(x)
+
+
+    accepting = ['a', 'abaa', 'bb', 'caba']
+    rejecting = ['abb', 'b', 'ccca']
+    
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+
+    for x in accepting:
+        assert my_dfa.label(x)
+
+    for x in rejecting:
+        assert not my_dfa.label(x)
