@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dfa_identify"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python library for identifying DFAs from labeled examples."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 license = "MIT"
