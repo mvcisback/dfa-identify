@@ -30,6 +30,7 @@ def test_codec():
     nodes = range(codec.n_nodes)
     tokens = range(codec.n_tokens)
 
+    # Test bijection on color accepting vars.
     lits = set()
     for c in colors:
         lit = codec.color_accepting(c)
@@ -37,8 +38,9 @@ def test_codec():
         var = codec.decode(lit)
         assert kind(var) == 'color_accepting'
         assert var.color == c
-    assert len(lits) == 3  # Check bijection.
+    assert len(lits) == 3
 
+    # Test bijection on color nodes.
     lits = set()
     for n, c in product(nodes, colors):
         lit = codec.color_node(n, c)
@@ -49,6 +51,7 @@ def test_codec():
         assert var.node == n
     assert len(lits) == 3 * 10  # Check bijection.
 
+    # Test bijection on parent relation vars.
     lits = set()
     for t, c1, c2 in product(tokens, colors, colors):
         lit = codec.parent_relation(t, c1, c2)
