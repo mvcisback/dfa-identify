@@ -3,7 +3,7 @@ name: default
 
 steps:
 - name: test
-  image: python:3.8
+  image: python:3.9
   commands:
   - pip install poetry
   - poetry install
