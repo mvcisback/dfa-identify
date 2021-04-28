@@ -1,4 +1,4 @@
-from dfa_identify.identify import find_dfa
+from dfa_identify import find_dfa
 
 
 def test_identify():
@@ -14,8 +14,8 @@ def test_identify():
         assert not my_dfa.label(x)
 
 
-    accepting = ['a', 'abaa', 'bb', 'caba']
-    rejecting = ['abb', 'b', 'ccca']
+    accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
+    rejecting = [[0, 'z', 'z'], ['z']]
     
     my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
 
