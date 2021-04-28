@@ -15,6 +15,9 @@ Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 
 
+# =================== Codec : int <-> variable  ====================
+
+
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class ColorAcceptingVar:
     color: int
@@ -30,8 +33,8 @@ class ColorNodeVar:
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class ParentRelationVar:
-    color1: int
-    color2: int
+    parent_color: int
+    node_color: int
     token: int
     true: bool
 
@@ -82,7 +85,7 @@ def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
 
-    for n_colors in fn.count(len(clique)):
+    for n_colors in range(len(clique), len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors)
         yield codec, list(encode_dfa_id(apta, codec, clique, cgraph))
 
@@ -105,7 +108,7 @@ def onehot_color_clauses(codec: Codec) -> Clauses:
         for i in range(codec.n_colors):
             lit = codec.color_node(n, i)
             for j in range(i + 1, codec.n_colors):  # i < j
-                yield [-lit, -codec.color_node(n, i)]
+                yield [-lit, -codec.color_node(n, j)]
 
 
 def tokensXcolors(codec: Codec):

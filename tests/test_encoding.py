@@ -58,8 +58,8 @@ def test_codec():
         lits.add(lit)
         var = codec.decode(lit)
         assert kind(var) == 'parent_relation'
-        assert var.color1 == c1
-        assert var.color2 == c2
+        assert var.parent_color == c1
+        assert var.node_color == c2
         assert var.token == t
 
     assert len(lits) == 9 * 4  # Check bijection.
