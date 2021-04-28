@@ -59,11 +59,11 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
 def find_dfa(
         accepting: list[Word], 
         rejecting: list[Word],
-        solver=Glucose4, 
+        solver_fact=Glucose4, 
 ) -> Optional[DFA]:
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
     for codec, clauses in dfa_id_encodings(apta):
-        with Glucose4() as solver:
+        with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)
 
