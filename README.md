@@ -6,6 +6,17 @@ Python library for identifying DFAs from labeled examples by reduction to SAT.
 [![PyPI version](https://badge.fury.io/py/dfa_identify.svg)](https://badge.fury.io/py/dfa_identify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+**Table of Contents**
+
+- [dfa-identify](#dfa-identify)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Encoding](#encoding)
+
+<!-- markdown-toc end -->
+
+
 # Installation
 
 If you just need to use `dfa`, you can just run:
