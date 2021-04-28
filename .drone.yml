@@ -1,0 +1,10 @@
+kind: pipeline
+name: default
+
+steps:
+- name: test
+  image: python:3.8
+  commands:
+  - pip install poetry
+  - poetry install
+  - poetry run pytest
