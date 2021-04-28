@@ -3,7 +3,6 @@ Python library for identifying DFAs from labeled examples by reduction to SAT.
 
 [![Build Status](https://cloud.drone.io/api/badges/mvcisback/dfa-identify/status.svg)](https://cloud.drone.io/mvcisback/dfa-identify)
 [![Docs](https://img.shields.io/badge/API-link-color)](https://mvcisback.github.io/dfa-identify)
-[![codecov](https://codecov.io/gh/mvcisback/dfa-identify/branch/master/graph/badge.svg)](https://codecov.io/gh/mvcisback/dfa-identify)
 [![PyPI version](https://badge.fury.io/py/dfa_identify.svg)](https://badge.fury.io/py/dfa_identify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
