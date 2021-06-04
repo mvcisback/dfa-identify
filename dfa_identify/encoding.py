@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any, NamedTuple, Iterable
+from typing import Any, NamedTuple, Iterable, Tuple
 
 import attr
 import funcy as fn
@@ -49,13 +49,14 @@ class Codec:
     def from_apta(apta: APTA, n_colors: int = 0) -> Codec:
         return Codec(len(apta.nodes), n_colors, len(apta.alphabet))
 
-    def color_accepting(self, color: int) -> int:
+    def color_accepting(self, color: int) -> int:  # get color var literal
         return 1 + color
 
-    def color_node(self, node: int, color: int) -> int:
+    def color_node(self, node: int, color: int) -> int:  # get literal of node x with color y
         return 1 + self.n_colors * (1 + node) + color
 
-    def parent_relation(self, token: Any, color1: int, color2: int) -> int:
+    def parent_relation(self, token: Any, color1: int, color2: int) -> int:  # get literal of relation var between
+        #  2 colors
         a = self.n_colors
         b = a**2
         c = 1 + self.n_colors * (1 + self.n_nodes)
@@ -93,7 +94,7 @@ def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
 def encode_dfa_id(apta, codec, clique, cgraph):
     # Clauses from Table 1.                                      rows
     yield from onehot_color_clauses(codec)                     # 1, 5
-    yield from partition_by_accepting_clauses(codec, apta)     # 2
+    yield from partition_by_accepting_clauses(codec, apta) # 2 will be adapted for preferences
     yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
     yield from onehot_parent_relation_clauses(codec)           # 4, 6
     yield from determination_conflicts(codec, cgraph)          # 8
@@ -105,7 +106,7 @@ def onehot_color_clauses(codec: Codec) -> Clauses:
         yield [codec.color_node(n, c) for c in range(codec.n_colors)]
 
     for n in range(codec.n_nodes):  # Each vertex has at most one color.
-        for i in range(codec.n_colors):
+        for i in range(codec.n_colors): # if it has one color, it can't have any others
             lit = codec.color_node(n, i)
             for j in range(i + 1, codec.n_colors):  # i < j
                 yield [-lit, -codec.color_node(n, j)]
@@ -128,7 +129,7 @@ def onehot_parent_relation_clauses(codec: Codec) -> Clauses:
             for j in range(h + 1, codec.n_colors):  # h < j
                 yield [-lit1, -codec.parent_relation(token, i, j)]
 
-
+#modify for preferences
 def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
@@ -136,6 +137,7 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
 
 
+# couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
     colors = range(codec.n_colors)
     rev_tree = apta.tree.reverse()

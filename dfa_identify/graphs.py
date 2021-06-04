@@ -4,7 +4,7 @@ See Heule, "Exact DFA Identification Using SAT Solve" for details.
 """
 from __future__ import annotations
 from itertools import chain, combinations
-from typing import Any, Iterable
+from typing import Any, Iterable, Tuple
 
 import attr
 import networkx as nx
@@ -27,6 +27,8 @@ class APTA:
     """Augmented Prefix Tree Acceptor."""
     tree: nx.DiGraph
     alphabet: bidict  # Mapping from token to int.
+    ord_prefs: set[Tuple[Node, Node]]
+    inc_prefs: set[Tuple[Node, Node]]  # MemReP 'incomparable' preferences (incomparable_word_1, incomparable_word_2)
 
     @property
     def nodes(self) -> Iterable[Node]:
@@ -45,12 +47,31 @@ class APTA:
         nodes = self.nodes(data=True)
         return {n for n, d in nodes if not d.get('label', True)}
 
+    @property
+    def ordered_preferences(self) -> set[Tuple[Node, Node]]:
+        return self.ord_prefs
+
+    @property
+    def incomparable_preferences(self) -> set[Tuple[Node, Node]]:
+        return self.inc_prefs
+
     @staticmethod
-    def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
+    def from_examples(accepting: list[Word], rejecting: list[Word],
+                      ordered_preference_words: list[Tuple[Word, Word]] = None,
+                      incomparable_preference_words: list[Tuple[Word, Word]] = None) -> APTA:
         """Return Augmented Prefix Tree Automata for accepting, rejecting."""
+        # If preference tuples weren't provided, initialize them as empty lists
+        if ordered_preference_words is None:
+            ordered_preference_words = []
+        if incomparable_preference_words is None:
+            incomparable_preference_words = []
+
         # Create prefix tree.
-        tree, root = nx.prefix_tree(chain(accepting, rejecting))
+        tree, root = nx.prefix_tree(chain(accepting, rejecting, list(chain(*ordered_preference_words)),
+                                          list(chain(*incomparable_preference_words))))
         tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
+
+
 
         def access(word: Word) -> Node:
             node = root
@@ -63,6 +84,16 @@ class APTA:
             for word in words:
                 tree.nodes[access(word)]['label'] = label
 
+        # Build the ordered preferences tuple set.
+        ordered_pref_nodes = set([])
+        for word_one, word_two in ordered_preference_words:
+            ordered_pref_nodes.add((tree.nodes[access(word_one)], tree.nodes[access(word_two)]))
+
+        # Build the incomparable preference tuple set.
+        incomparable_pref_nodes = set([])
+        for word_one, word_two in incomparable_preference_words:
+            incomparable_pref_nodes.add((tree.nodes[access(word_one)], tree.nodes[access(word_two)]))
+
         # Label nodes with integers. With root = 0.
         relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
         relabels[root] = 0
@@ -73,13 +104,14 @@ class APTA:
             raise ValueError("None not allowed in alphabet.")
         alphabet = bidict(enumerate(alphabet)).inv
 
-        return APTA(tree, alphabet)
+        return APTA(tree, alphabet, ordered_pref_nodes, incomparable_pref_nodes)
 
     def consistency_graph(self) -> nx.Graph:
         """Return consistency graph for APTA via repeated DFS."""
         graph = nx.Graph()
         graph.add_nodes_from(self.tree.nodes)
         for pair in combinations(self.tree.nodes, 2):
+            # if inconsistency
             if not self._can_merge(graph, pair):
                 graph.add_edge(*pair)
         return graph
@@ -89,6 +121,7 @@ class APTA:
         nodes = self.tree.nodes
 
         stack, visited = [pair], set()
+        #simulate prefix tree at different nodes and see if distinguishing behavior arises
         while stack:  # DFS for inconsistency in states.
             left, right = stack.pop()
 
