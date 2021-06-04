@@ -184,7 +184,7 @@ def onehot_color_clauses(codec: Codec) -> Clauses:
         yield [codec.color_node(n, c) for c in range(codec.n_colors)]
 
     for n in range(codec.n_nodes):  # Each vertex has at most one color.
-        for i in range(codec.n_colors):
+        for i in range(codec.n_colors): # if it has one color, it can't have any others
             lit = codec.color_node(n, i)
             for j in range(i + 1, codec.n_colors):  # i < j
                 yield [-lit, -codec.color_node(n, j)]
@@ -207,7 +207,7 @@ def onehot_parent_relation_clauses(codec: Codec) -> Clauses:
             for j in range(h + 1, codec.n_colors):  # h < j
                 yield [-lit1, -codec.parent_relation(token, i, j)]
 
-
+#modify for preferences
 def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
@@ -215,6 +215,7 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
 
 
+# couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
     colors = range(codec.n_colors)
     rev_tree = apta.tree.reverse()

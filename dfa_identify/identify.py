@@ -11,7 +11,7 @@ from dfa_identify.encoding import (
     ColorNodeVar,
     ParentRelationVar
 )
-
+import pdb
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
@@ -103,6 +103,7 @@ def find_dfa(
       indicating that no DFA exists.
     """
     return next(find_dfas(accepting, rejecting, solver_fact, sym_mode), None)
+
 
 
 __all__ = ['find_dfas', 'find_dfa', 'extract_dfa']
