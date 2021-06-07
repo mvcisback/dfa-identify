@@ -179,6 +179,7 @@ def encode_dfa_id(apta, codec, cgraph, clique=None):
         yield from symmetry_breaking_bfs(codec)
 
 
+
 def onehot_color_clauses(codec: Codec) -> Clauses:
     for n in range(codec.n_nodes):  # Each vertex has at least one color.
         yield [codec.color_node(n, c) for c in range(codec.n_colors)]
@@ -213,6 +214,21 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
         lit = codec.color_accepting(c)
         yield from ([-codec.color_node(n, c), lit] for n in apta.accepting)
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
+        # encode the ordering constraints on preferences (equation 6 in memreps)
+        for c2 in range(codec.n_colors):
+            lit2 = codec.color_accepting(c2)
+            # for the first clause (acceptance leads to acceptance)
+            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
+            yield from ([-lit2, -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
+            # for the second clause (rejection leads to rejection)
+            yield from ([-codec.color_node(nl, c2), -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
+            yield from ([lit2, -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
+
+            # encode the equality constraints on incomparable preferences
+            # for accepting or rejecting colors, these clauses should encode
+            yield from ([-codec.color_node(np, c2), -lit2, -codec.color_node(nl, c), lit] for np, nl in apta.inc_prefs)
+            yield from ([-codec.color_node(nl, c), -lit, -codec.color_node(np, c2), lit2] for np, nl in apta.inc_prefs)
+
 
 
 # couples transitions
