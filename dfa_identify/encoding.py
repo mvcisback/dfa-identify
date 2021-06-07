@@ -94,7 +94,7 @@ def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
 def encode_dfa_id(apta, codec, clique, cgraph):
     # Clauses from Table 1.                                      rows
     yield from onehot_color_clauses(codec)                     # 1, 5
-    yield from partition_by_accepting_clauses(codec, apta) # 2 will be adapted for preferences
+    yield from partition_by_accepting_clauses(codec, apta)     # 2 will be adapted for preferences
     yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
     yield from onehot_parent_relation_clauses(codec)           # 4, 6
     yield from determination_conflicts(codec, cgraph)          # 8
@@ -135,6 +135,21 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
         lit = codec.color_accepting(c)
         yield from ([-codec.color_node(n, c), lit] for n in apta.accepting)
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
+        # encode the ordering constraints on preferences (equation 6 in memreps)
+        for c2 in range(codec.n_colors):
+            lit2 = codec.color_accepting(c2)
+            # for the first clause (acceptance leads to acceptance)
+            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
+            yield from ([-lit2, -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
+            # for the second clause (rejection leads to rejection)
+            yield from ([-codec.color_node(nl, c2), -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
+            yield from ([lit2, -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
+
+            # encode the equality constraints on incomparable preferences
+            # for accepting or rejecting colors, these clauses should encode
+            yield from ([-codec.color_node(np, c2), -lit2, -codec.color_node(nl, c), lit] for np, nl in apta.inc_prefs)
+            yield from ([-codec.color_node(nl, c), -lit, -codec.color_node(np, c2), lit2] for np, nl in apta.inc_prefs)
+
 
 
 # couples transitions
