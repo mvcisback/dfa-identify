@@ -217,17 +217,14 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
         # encode the ordering constraints on preferences (equation 6 in memreps)
         for c2 in range(codec.n_colors):
             lit2 = codec.color_accepting(c2)
-            # for the first clause (acceptance leads to acceptance)
-            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
-            yield from ([-lit2, -codec.color_node(nl, c2), lit] for np, nl in apta.ord_prefs)
-            # for the second clause (rejection leads to rejection)
-            yield from ([-codec.color_node(nl, c2), -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
-            yield from ([lit2, -codec.color_node(np, c2), -lit] for np, nl in apta.ord_prefs)
+            # acceptance on LHS leads to acceptance on RHS, rejection on RHS leads to rejection on LHS
+            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), -lit2, lit] for nl, np in apta.ordered_preferences)
+            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), -lit, lit2] for nl, np in apta.ordered_preferences)
 
             # encode the equality constraints on incomparable preferences
-            # for accepting or rejecting colors, these clauses should encode
-            yield from ([-codec.color_node(np, c2), -lit2, -codec.color_node(nl, c), lit] for np, nl in apta.inc_prefs)
-            yield from ([-codec.color_node(nl, c), -lit, -codec.color_node(np, c2), lit2] for np, nl in apta.inc_prefs)
+            # for either accepting or rejecting colors, these clauses should encode equality
+            yield from ([-codec.color_node(np, c2), -lit2, -codec.color_node(nl, c), lit] for np, nl in apta.incomparable_preferences)
+            yield from ([-codec.color_node(nl, c), -lit, -codec.color_node(np, c2), lit2] for np, nl in apta.incomparable_preferences)
 
 
 

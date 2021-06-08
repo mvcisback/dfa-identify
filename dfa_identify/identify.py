@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
@@ -55,6 +55,8 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
 def find_dfas(
         accepting: list[Word],
         rejecting: list[Word],
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        incomparable_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
 ) -> Iterable[DFA]:
@@ -71,7 +73,8 @@ def find_dfas(
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
     """
-    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
+    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
+                              incomparable_preference_words=incomparable_preference_words)
     for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode):
         with solver_fact() as solver:
             for clause in clauses:
@@ -88,6 +91,8 @@ def find_dfas(
 def find_dfa(
         accepting: list[Word],
         rejecting: list[Word],
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        incomparable_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "clique",
 ) -> Optional[DFA]:
@@ -102,7 +107,9 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-    return next(find_dfas(accepting, rejecting, solver_fact, sym_mode), None)
+    return next(find_dfas(accepting, rejecting, ordered_preference_words, incomparable_preference_words,
+                          solver_fact, sym_mode), None)
+
 
 
 
