@@ -1,6 +1,6 @@
 import random
 from itertools import groupby
-from typing import Optional
+from typing import Optional, Tuple
 
 import funcy as fn
 from dfa import dict2dfa, DFA
@@ -59,6 +59,8 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
 def find_dfa(
         accepting: list[Word], 
         rejecting: list[Word],
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        incomparable_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4, 
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
@@ -73,7 +75,8 @@ def find_dfa(
       indicating that no DFA exists.
     """
     
-    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
+    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
+                              incomparable_preference_words=incomparable_preference_words)
     for codec, clauses in dfa_id_encodings(apta):
         with solver_fact() as solver:
             for clause in clauses:
