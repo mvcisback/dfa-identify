@@ -101,7 +101,7 @@ class APTA:
             tree.nodes[access(word_two)]['ord_pref_label'] = idx  # positive indices are the more preferred
 
         # Build the incomparable preference tuple set.
-        for idx, (word_one, word_two) in incomparable_preference_words:
+        for idx, (word_one, word_two) in enumerate(incomparable_preference_words):
             tree.nodes[access(word_one)]['inc_pref_label'] = -idx
             tree.nodes[access(word_two)]['inc_pref_label'] = idx
 

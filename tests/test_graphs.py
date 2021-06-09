@@ -21,3 +21,23 @@ def test_fig1():
     assert len(graph.nodes) == 8
     assert len(graph.edges) == 10
     
+def test_fig1_preferences():
+    """Example from fig1 in Heule 2010."""
+    apta = APTA.from_examples(
+        accepting=['a', 'abaa', 'bb'],
+        rejecting=['abb', 'b'],
+        ordered_preference_words=[("bb", "aba"), ("ab", "b")],
+        incomparable_preference_words=[("abb", "abbb")]
+    )
+    assert apta.alphabet.keys() == {'a', 'b'}
+
+    assert len(apta.tree.nodes) == 9
+    assert len(apta.tree.edges) == 8
+
+
+    assert len(apta.accepting) == 3
+    assert len(apta.rejecting) == 2
+
+    graph = apta.consistency_graph()
+    assert len(graph.nodes) == 9
+    assert len(graph.edges) == 10
