@@ -223,8 +223,14 @@ def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
 
             # encode the equality constraints on incomparable preferences
             # for either accepting or rejecting colors, these clauses should encode equality
-            yield from ([-codec.color_node(np, c2), -lit2, -codec.color_node(nl, c), lit] for np, nl in apta.incomparable_preferences)
-            yield from ([-codec.color_node(nl, c), -lit, -codec.color_node(np, c2), lit2] for np, nl in apta.incomparable_preferences)
+            yield from ([-codec.color_node(np, c2), -lit, lit2] for nl, np in apta.incomparable_preferences)
+            yield from ([-codec.color_node(np, c2), -lit2, lit] for nl, np in apta.incomparable_preferences)
+            yield from ([-codec.color_node(nl, c), -lit, lit2] for nl, np in apta.incomparable_preferences)
+            yield from ([-codec.color_node(nl, c), -lit2, lit] for nl, np in apta.incomparable_preferences)
+
+
+
+            #yield from ([-codec.color_node(nl, c), lit, codec.color_node(np, c2), -lit2] for nl, np in apta.incomparable_preferences)
 
 
 
