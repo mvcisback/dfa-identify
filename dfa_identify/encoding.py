@@ -233,7 +233,6 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
                         for nl, np in apta.incomparable_preferences)
 
 
-
 # couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
     colors = range(codec.n_colors)

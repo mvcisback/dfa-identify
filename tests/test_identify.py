@@ -73,6 +73,7 @@ def test_identify_preferences():
     incomparable_preference_words = [("abb", "abbb")]
     my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
                       ,incomparable_preference_words=incomparable_preference_words)
+
     true_accepting = ['a', 'abaa', 'bb', "aba"]
     true_rejecting = ["abb", "b", "abbb", "ab"]
     for x in true_accepting:
