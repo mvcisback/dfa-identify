@@ -67,15 +67,14 @@ def test_enumerate():
 
 def test_identify_preferences():
     import pdb
-    accepting = ['a', 'abaa', 'bb']
+    accepting = ['a', 'abaa', 'bb', 'aba']
     rejecting = ['abb', 'b']
 
-    ordered_preference_words = [("bb", "aba"), ("ab", "b")],
+    ordered_preference_words = [("bb", "aba"), ("ab", "b"), ("b", "a")]
     incomparable_preference_words = [("abb", "abbb")]
-
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
-                      incomparable_preference_words=incomparable_preference_words)
-    pdb.set_trace()
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
+                      ,incomparable_preference_words=incomparable_preference_words)
+    #pdb.set_trace()
     true_accepting = ['a', 'abaa', 'bb', "aba"]
     true_rejecting = ["abb", "b", "abbb", "ab"]
     for x in true_accepting:

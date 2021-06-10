@@ -49,22 +49,22 @@ class APTA:
 
     @property
     def ordered_preferences(self) -> set[Tuple[Node, Node]]:
-        ord_prefs = [[0,0]] * self.num_ord_prefs
-        for n, d in self.nodes(data=True):
+        ord_prefs = [[0,0] for i in range(self.num_ord_prefs)]
+        for nde, d in self.nodes(data=True):
             if d.get("ord_pref_label") is not None:
                 ord_position = d.get("ord_pref_label")
                 ordering_idx = 0 if ord_position < 0 else 1
-                ord_prefs[abs(ord_position)][ordering_idx] = n
+                ord_prefs[abs(ord_position) - 1][ordering_idx] = nde
         return set([tuple(l) for l in ord_prefs])
 
     @property
     def incomparable_preferences(self) -> set[Tuple[Node, Node]]:
-        inc_prefs = [[0,0]] * self.num_inc_prefs
-        for n, d in self.nodes(data=True):
+        inc_prefs = [[0,0] for i in range(self.num_inc_prefs)]
+        for nde, d in self.nodes(data=True):
             if d.get("inc_pref_label") is not None:
                 ord_position = d.get("inc_pref_label")
                 ordering_idx = 0 if ord_position < 0 else 1
-                inc_prefs[abs(ord_position)][ordering_idx] = n
+                inc_prefs[abs(ord_position) - 1][ordering_idx] = nde
         return set([tuple(l) for l in inc_prefs])
 
 
@@ -97,14 +97,13 @@ class APTA:
 
         # Build the ordered preferences tuple set.
         for idx, (word_one, word_two) in enumerate(ordered_preference_words):
-            tree.nodes[access(word_one)]['ord_pref_label'] = -idx  # negative indices are the less preferred
-            tree.nodes[access(word_two)]['ord_pref_label'] = idx  # positive indices are the more preferred
+            tree.nodes[access(word_one)]['ord_pref_label'] = -(idx + 1)  # negative indices are the less preferred
+            tree.nodes[access(word_two)]['ord_pref_label'] = (idx + 1)  # positive indices are the more preferred
 
         # Build the incomparable preference tuple set.
         for idx, (word_one, word_two) in enumerate(incomparable_preference_words):
-            tree.nodes[access(word_one)]['inc_pref_label'] = -idx
-            tree.nodes[access(word_two)]['inc_pref_label'] = idx
-
+            tree.nodes[access(word_one)]['inc_pref_label'] = -(idx + 1)
+            tree.nodes[access(word_two)]['inc_pref_label'] = (idx + 1)
         # Label nodes with integers. With root = 0.
         relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
         relabels[root] = 0
