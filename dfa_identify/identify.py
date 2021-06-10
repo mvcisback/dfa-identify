@@ -24,7 +24,7 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     var_groups = groupby(decoded, type)
 
     group1 = next(var_groups)
-    pdb.set_trace()
+    #pdb.set_trace()
     assert group1[0] == ColorAcceptingVar
     accepting = {v.color for v in group1[1] if v.true}
     
@@ -75,7 +75,6 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-    
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
                               incomparable_preference_words=incomparable_preference_words)
     for codec, clauses in dfa_id_encodings(apta):
