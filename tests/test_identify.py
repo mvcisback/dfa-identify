@@ -27,7 +27,7 @@ def test_identify():
 
 def test_identify_preferences():
     import pdb
-    accepting = ['a', 'abaa', 'bb', 'aba']
+    accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']
 
     ordered_preference_words = [("bb", "aba"), ("ab", "b"), ("b", "a")]
