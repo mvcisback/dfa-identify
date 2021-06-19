@@ -26,7 +26,6 @@ def test_identify():
         assert not my_dfa.label(x)
 
 def test_identify_preferences():
-    import pdb
     accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']
 
@@ -34,13 +33,11 @@ def test_identify_preferences():
     incomparable_preference_words = [("abb", "abbb")]
     my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
                       ,incomparable_preference_words=incomparable_preference_words)
-    #pdb.set_trace()
     true_accepting = ['a', 'abaa', 'bb', "aba"]
     true_rejecting = ["abb", "b", "abbb", "ab"]
     for x in true_accepting:
         assert my_dfa.label(x)
 
     for x in true_rejecting:
-        print(x, my_dfa.label(x))
         assert not my_dfa.label(x)
 
