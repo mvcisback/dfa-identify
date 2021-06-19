@@ -27,8 +27,11 @@ class APTA:
     """Augmented Prefix Tree Acceptor."""
     tree: nx.DiGraph
     alphabet: bidict  # Mapping from token to int.
-    num_ord_prefs: int
-    num_inc_prefs: int
+    accepting_nodes: set[Node]  # Accepting states in the DFA.
+    rejecting_nodes: set[Node]  # Rejecting states in the DFA.
+    ord_prefs: set[Tuple[Node, Node]]  # MemReP 'ordered' preferences (less_preferred_word, more_preferred_word)
+    inc_prefs: set[Tuple[Node, Node]]  # MemReP 'incomparable' preferences (incomparable_word_1, incomparable_word_2)
+
 
     @property
     def nodes(self) -> Iterable[Node]:
@@ -40,32 +43,19 @@ class APTA:
 
     @property
     def accepting(self) -> set[Node]:
-        return {n for n, d in self.nodes(data=True) if d.get('label')}
+         return self.accepting_nodes
 
     @property
     def rejecting(self) -> set[Node]:
-        nodes = self.nodes(data=True)
-        return {n for n, d in nodes if not d.get('label', True)}
+        return self.rejecting_nodes
 
     @property
     def ordered_preferences(self) -> set[Tuple[Node, Node]]:
-        ord_prefs = [[0,0] for i in range(self.num_ord_prefs)]
-        for nde, d in self.nodes(data=True):
-            if d.get("ord_pref_label") is not None:
-                ord_position = d.get("ord_pref_label")
-                ordering_idx = 0 if ord_position < 0 else 1
-                ord_prefs[abs(ord_position) - 1][ordering_idx] = nde
-        return set([tuple(l) for l in ord_prefs])
+        return self.ord_prefs
 
     @property
     def incomparable_preferences(self) -> set[Tuple[Node, Node]]:
-        inc_prefs = [[0,0] for i in range(self.num_inc_prefs)]
-        for nde, d in self.nodes(data=True):
-            if d.get("inc_pref_label") is not None:
-                ord_position = d.get("inc_pref_label")
-                ordering_idx = 0 if ord_position < 0 else 1
-                inc_prefs[abs(ord_position) - 1][ordering_idx] = nde
-        return set([tuple(l) for l in inc_prefs])
+        return self.inc_prefs
 
 
     @staticmethod
@@ -83,27 +73,6 @@ class APTA:
                                           list(chain(*incomparable_preference_words))))
         tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
 
-
-        def access(word: Word) -> Node:
-            node = root
-            for char in word:  # Walk tree for node accessed by word.
-                node = transition(tree, node, char)
-            return node
-
-        # Augment tree with node labels.
-        for label, words in [(True, accepting), (False, rejecting)]:
-            for word in words:
-                tree.nodes[access(word)]['label'] = label
-
-        # Build the ordered preferences tuple set.
-        for idx, (word_one, word_two) in enumerate(ordered_preference_words):
-            tree.nodes[access(word_one)]['ord_pref_label'] = -(idx + 1)  # negative indices are the less preferred
-            tree.nodes[access(word_two)]['ord_pref_label'] = (idx + 1)  # positive indices are the more preferred
-
-        # Build the incomparable preference tuple set.
-        for idx, (word_one, word_two) in enumerate(incomparable_preference_words):
-            tree.nodes[access(word_one)]['inc_pref_label'] = -(idx + 1)
-            tree.nodes[access(word_two)]['inc_pref_label'] = (idx + 1)
         # Label nodes with integers. With root = 0.
         relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
         relabels[root] = 0
@@ -114,7 +83,34 @@ class APTA:
             raise ValueError("None not allowed in alphabet.")
         alphabet = bidict(enumerate(alphabet)).inv
 
-        return APTA(tree, alphabet, len(ordered_preference_words), len(incomparable_preference_words))
+        def access(word: Word) -> Node:
+            node = relabels[root]
+            for char in word:  # Walk tree for node accessed by word.
+                node = transition(tree, node, char)
+            return node
+
+
+        # Augment tree with node labels.
+        accepting_nodes, rejecting_nodes = set(), set()
+        for label, words in [(True, accepting), (False, rejecting)]:
+            for word in words:
+                if label:
+                    accepting_nodes.add(access(word))
+                else:
+                    rejecting_nodes.add(access(word))
+
+        # Build the ordered preferences tuple set.
+        ordered_preference_nodes = set()
+        for (word_one, word_two) in ordered_preference_words:
+            ordered_preference_nodes.add((access(word_one), access(word_two)))
+
+        # Build the incomparable preference tuple set.
+        incomparable_preference_nodes = set()
+        for (word_one, word_two) in incomparable_preference_words:
+            incomparable_preference_nodes.add((access(word_one), access(word_two)))
+
+        return APTA(tree, alphabet, accepting_nodes, rejecting_nodes, ordered_preference_nodes,
+                    incomparable_preference_nodes)
 
     def consistency_graph(self) -> nx.Graph:
         """Return consistency graph for APTA via repeated DFS."""
