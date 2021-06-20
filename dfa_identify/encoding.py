@@ -160,7 +160,7 @@ def determination_conflicts(codec: Codec, cgraph: nx.Graph) -> Clauses:
 
 
 def symmetry_breaking(codec: Codec, clique: Nodes) -> Clauses:
-    for node, color in enumerate(clique):
+    for color, node in enumerate(clique):
         yield [codec.color_node(node, color)]
 
 
