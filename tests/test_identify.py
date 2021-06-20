@@ -35,6 +35,21 @@ class TestIdentify(unittest.TestCase):
         assert len(my_dfa.states()) == 3
 
         write_dot(my_dfa, os.path.join(self.outdir,"test1.dot"))
+    
+    def test_identify_2(self):
+        accepting = ['ab', 'b', 'ba', 'bbb']
+        rejecting = ['abbb', 'baba']
+        
+        my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+
+        for x in accepting:
+            assert my_dfa.label(x)
+
+        for x in rejecting:
+            assert not my_dfa.label(x)
+
+        assert len(my_dfa.states()) == 3
+        write_dot(my_dfa, os.path.join(self.outdir,"test2.dot"))
 
     def test_identify_repeatedly(self):
 
@@ -52,6 +67,20 @@ class TestIdentify(unittest.TestCase):
                 assert not my_dfa.label(x)
 
             # check that minimal dfa is found
+            assert len(my_dfa.states()) == 3
+
+        accepting = ['ab', 'b', 'ba', 'bbb']
+        rejecting = ['abbb', 'baba']
+        
+        for i in range(200):
+            my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+
+            for x in accepting:
+                assert my_dfa.label(x)
+
+            for x in rejecting:
+                assert not my_dfa.label(x)
+
             assert len(my_dfa.states()) == 3
 
 if __name__ == '__main__':
