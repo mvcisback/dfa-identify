@@ -231,11 +231,8 @@ def symmetry_breaking_common(codec: Codec) -> Clauses:
     Symmetry breaking clauses for both DFS and BFS
     See Ulyantsev 2016 
     """
-    yield [codec.color_node(0,0)] # Not listed in Ulyantsev
+    yield [codec.color_node(0,0)] # Ensures start vertex is 0 - not listed in Ulyantsev
     for color2 in range(codec.n_colors):
-        # clause4 = [codec.enumeration_parent(color1, color2) for color1 in range(color2)]
-        # if len(clause4) >= 0:
-        #     yield clause4
         if color2 > 0:
             yield [codec.enumeration_parent(color1, color2) for color1 in range(color2)] # 4
         for color1 in range(color2):
