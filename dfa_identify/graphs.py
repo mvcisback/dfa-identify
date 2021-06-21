@@ -72,7 +72,6 @@ class APTA:
         if None in alphabet:
             raise ValueError("None not allowed in alphabet.")
         alphabet = bidict(enumerate(alphabet)).inv
-
         return APTA(tree, alphabet)
 
     def consistency_graph(self) -> nx.Graph:

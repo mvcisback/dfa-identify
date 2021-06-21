@@ -7,7 +7,7 @@ from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
 
 from dfa_identify.graphs import Word, APTA
-from dfa_identify.encoding import dfa_id_encodings, Codec
+from dfa_identify.encoding import dfa_id_encodings, Codec, SymmBreak
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -19,7 +19,8 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
     n_tokens = len(apta.alphabet)
 
-    decoded = map(codec.decode, model)
+    n_variables = sum(codec.counts[:3])
+    decoded = map(codec.decode, model[:n_variables])
     decoded = list(decoded)
     var_groups = groupby(decoded, type)
 
@@ -60,6 +61,7 @@ def find_dfa(
         accepting: list[Word], 
         rejecting: list[Word],
         solver_fact=Glucose4, 
+        symm_mode: SymmBreak = SymmBreak.CLIQUE
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -74,7 +76,7 @@ def find_dfa(
     """
     
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
-    for codec, clauses in dfa_id_encodings(apta):
+    for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
         with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)

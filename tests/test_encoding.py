@@ -2,7 +2,7 @@ from itertools import product
 import unittest
 
 from dfa_identify.graphs import APTA
-from dfa_identify.encoding import Codec, dfa_id_encodings
+from dfa_identify.encoding import Codec, SymmBreak, dfa_id_encodings
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -21,7 +21,7 @@ class TestEncoding(unittest.TestCase):
 
 
     def test_codec(self):
-        codec = Codec(n_nodes=10, n_colors=3, n_tokens=4)
+        codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode=SymmBreak.BFS)
         assert self.kind(codec.decode(1)) == 'color_accepting'
         assert self.kind(codec.decode(3)) == 'color_accepting'
         assert self.kind(codec.decode(4)) == 'color_node'
@@ -66,6 +66,27 @@ class TestEncoding(unittest.TestCase):
 
         assert len(lits) == 9 * 4  # Check bijection.
         assert max(lits) == 3 + 3 * 10 + 9 * 4
+
+    def test_symm_break(self):
+        codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode=SymmBreak.BFS)
+        assert self.kind(codec.decode(1)) == 'color_accepting'
+        assert self.kind(codec.decode(3)) == 'color_accepting'
+        assert self.kind(codec.decode(4)) == 'color_node'
+        assert self.kind(codec.decode(33)) == 'color_node'
+        assert self.kind(codec.decode(34)) == 'parent_relation'
+
+        p = [codec.enumeration_parent(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
+        t = [codec.transition_relation(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
+        m = [codec.enumeration_label(l,i) for l,i in product(range(codec.n_tokens), range(codec.n_colors))]
+        assert len(p) == 3
+        assert len(t) == 3
+        assert len(m) == 12
+        for i in range(70, 72):
+            assert i in p
+        for i in range(73, 75):
+            assert i in t
+        for i in range(76, 87):
+            assert i in m
 
 
     def test_encode_dfa_id(self):
