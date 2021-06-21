@@ -71,7 +71,7 @@ def test_encode_dfa_id():
         accepting=['a', 'abaa', 'bb'],
         rejecting=['abb', 'b'],
     )
-    
+
     encodings = dfa_id_encodings(apta)
     clauses1 = next(encodings)[1]
     clauses2 = next(encodings)[1]
