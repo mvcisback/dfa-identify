@@ -90,7 +90,7 @@ class APTA:
             return node
 
 
-        # Augment tree with node labels.
+        # Augment this class with node labels.
         accepting_nodes, rejecting_nodes = set(), set()
         for label, words in [(True, accepting), (False, rejecting)]:
             for word in words:
@@ -138,8 +138,16 @@ class APTA:
             if (left, right) in graph.edges:
                 return False  # Reached known distinguished nodes.
 
-            left_lbl = nodes[left].get('label')
-            right_lbl = nodes[right].get('label')
+            if left in self.accepting:
+                left_lbl = True
+            else:
+                left_lbl = False if left in self.rejecting else None
+
+            if right in self.accepting:
+                right_lbl = True
+            else:
+                right_lbl = False if right in self.rejecting else None
+
             if None not in {left_lbl, right_lbl} and left_lbl != right_lbl:
                 return False  # Discovered distiguishing path.
 
