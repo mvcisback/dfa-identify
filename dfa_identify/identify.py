@@ -11,7 +11,6 @@ from dfa_identify.encoding import (
     ColorNodeVar,
     ParentRelationVar
 )
-import pdb
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
@@ -20,7 +19,6 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     var_groups = groupby(decoded, type)
 
     group1 = next(var_groups)
-    #pdb.set_trace()
     assert group1[0] == ColorAcceptingVar
     accepting = {v.color for v in group1[1] if v.true}
 
