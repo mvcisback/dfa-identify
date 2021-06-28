@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any, NamedTuple, Iterable
+from typing import Any, Iterable, Union
 
 import attr
-import funcy as fn
 import networkx as nx
 from networkx.algorithms.approximation.clique import max_clique
 
@@ -37,6 +36,9 @@ class ParentRelationVar:
     node_color: int
     token: int
     true: bool
+
+
+Var = Union[ColorAcceptingVar, ColorNodeVar, ParentRelationVar]
 
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
@@ -75,7 +77,6 @@ class Codec:
         color2 = tmp % self.n_colors
         token = tmp // self.n_colors
         return ParentRelationVar(color1, color2, token, true)
-            
 
 
 # ================= Clause Generator =====================
@@ -92,11 +93,11 @@ def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
 
 def encode_dfa_id(apta, codec, clique, cgraph):
     # Clauses from Table 1.                                      rows
-    yield from onehot_color_clauses(codec)                     # 1, 5
-    yield from partition_by_accepting_clauses(codec, apta)     # 2
-    yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
-    yield from onehot_parent_relation_clauses(codec)           # 4, 6
-    yield from determination_conflicts(codec, cgraph)          # 8
+    yield from onehot_color_clauses(codec)                      # 1, 5
+    yield from partition_by_accepting_clauses(codec, apta)      # 2
+    yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
+    yield from onehot_parent_relation_clauses(codec)            # 4, 6
+    yield from determination_conflicts(codec, cgraph)           # 8
     yield from symmetry_breaking(codec, clique)
 
 

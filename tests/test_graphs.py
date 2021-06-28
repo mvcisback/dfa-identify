@@ -1,5 +1,3 @@
-from collections import Counter
-
 from dfa_identify.graphs import APTA
 
 
@@ -20,4 +18,3 @@ def test_fig1():
     graph = apta.consistency_graph()
     assert len(graph.nodes) == 8
     assert len(graph.edges) == 10
-    

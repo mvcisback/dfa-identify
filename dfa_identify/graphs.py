@@ -38,7 +38,7 @@ class APTA:
 
     @property
     def accepting(self) -> set[Node]:
-         return {n for n, d in self.nodes(data=True) if d.get('label')}
+        return {n for n, d in self.nodes(data=True) if d.get('label')}
 
     @property
     def rejecting(self) -> set[Node]:
@@ -84,7 +84,7 @@ class APTA:
                 graph.add_edge(*pair)
         return graph
 
-    def _can_merge(self, graph: nx.Graph, pair: Tuple[Node, Node]) -> bool:
+    def _can_merge(self, graph: nx.Graph, pair: tuple[Node, Node]) -> bool:
         succ = self.tree.neighbors
         nodes = self.tree.nodes
 
