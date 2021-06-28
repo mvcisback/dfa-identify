@@ -7,4 +7,4 @@ steps:
   commands:
   - pip install poetry
   - poetry install
-  - poetry run pytest
+  - poetry run pytest --flake8
