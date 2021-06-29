@@ -1,25 +1,33 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import Any, NamedTuple, Iterable
+from typing import Any, NamedTuple, Iterable, Literal, Optional
 
 import attr
 import funcy as fn
 import networkx as nx
 from networkx.algorithms.approximation.clique import max_clique
-from enum import Enum
 from datetime import datetime
+from functools import partial
 
 from dfa_identify.graphs import APTA, Node
-
+import inspect
 
 Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 
-class SymmBreak(Enum):
-    NONE = 0
-    CLIQUE = 1
-    BFS = 2
+def validate_enc(func):
+    def wrapper(self, *args):
+        argnames = inspect.signature(func).parameters.keys()
+        for i, argname in enumerate(argnames):
+            if argname[:5] == "color":
+                assert (args[i-1] < self.n_colors) and (args[i-1] >= 0), "color arg must be nonnegative and smaller than n_colors"
+            elif argname[:4] == "node":
+                assert (args[i-1] < self.n_nodes) and (args[i-1] >= 0), "node arg must be nonnegative and smaller than n_nodes"
+            elif argname[:5] == "token":
+                assert (args[i-1] < self.n_tokens) and (args[i-1] >= 0), "token arg must be nonnegative and smaller than n_tokens"
+        return func(self, *args)
+    return wrapper
 
 # =================== Codec : int <-> variable  ====================
 
@@ -50,9 +58,9 @@ class Codec:
     n_nodes: int
     n_colors: int
     n_tokens: int
-    symm_mode: SymmBreak = attr.ib(default = SymmBreak.CLIQUE)
+    symm_mode: Optional[Literal["clique", "bfs"]]
 
-    counts: list[int] = attr.ib()
+    counts: tuple[int] = attr.ib()
     @counts.default
     def counts_default(self):
         """
@@ -69,54 +77,45 @@ class Codec:
             self.n_colors * self.n_tokens
             ]
 
+
+    
     @staticmethod
-    def from_apta(apta: APTA, n_colors: int = 0, symm_mode: SymmBreak = SymmBreak.CLIQUE) -> Codec:
+    def from_apta(apta: APTA, n_colors: int = 0, symm_mode: Optional[Literal["clique", "bfs"]] = None) -> Codec:
         return Codec(len(apta.nodes), n_colors, len(apta.alphabet), symm_mode)
 
+    @validate_enc
     def color_accepting(self, color: int) -> int:
         """ Literature refers to these variables as z """
-        # return 1 + color
-        assert (color < self.n_colors) and (color >= 0), "color must be nonnegative and smaller than n_colors"
         return sum(self.counts[:0]) + 1 + color
 
+    @validate_enc
     def color_node(self, node: int, color: int) -> int:
         """ Literature refers to these variables as x """
-        # return 1 + self.n_colors * (1 + node) + color
-        assert (color < self.n_colors) and (color >= 0), "color must be nonnegative and smaller than n_colors"
-        assert (node < self.n_nodes) and (node >= 0), "node must be nonnegative and smaller than n_nodes"
         return sum(self.counts[:1]) + 1 + self.n_colors * node + color
 
+    @validate_enc
     def parent_relation(self, token: Any, color1: int, color2: int) -> int:
         """ Literature refers to these variables as y """
-        assert (color1 >= 0) and (color2 >= 0), "colors must be nonnegative"
-        assert (color2 < self.n_colors) and (color1 < self.n_colors), "colors must be smaller than n_colors"
-        assert (token < self.n_tokens) and (token >= 0), "token must be nonnegative and smaller than n_tokens"
         a = self.n_colors
         b = a**2
-        # c = 1 + self.n_colors * (1 + self.n_nodes)
-        # return color1 + a * color2 + b * token + c
         return sum(self.counts[:2]) + 1 + color1 + a * color2 + b * token
 
+    @validate_enc
     def enumeration_parent(self, color1: int, color2: int) -> int:
         """ Literature refers to these variables as p
         Note: here we use p_{i,j} rather than p_{j,i} """
-        assert (color1 < color2), "color1 must be smaller"
-        assert (color1 >= 0), "color1 must be non-negative"
-        assert (color2 < self.n_colors), "color2 must be smaller than n_colors"
+        assert (color1 < color2), "color1 must be smaller than color2"
         return sum(self.counts[:3]) + 1 + (((color2) * (color2 - 1)) // 2) + color1
 
+    @validate_enc
     def transition_relation(self, color1: int, color2: int) -> int:
         """ Literature refers to these variables as t """
-        assert (color1 < color2), "color1 must be smaller"
-        assert (color1 >= 0), "color1 must be non-negative"
-        assert (color2 < self.n_colors), "color2 must be smaller than n_colors"
+        assert (color1 < color2), "color1 must be smaller than color2"
         return sum(self.counts[:4]) + 1 + (((color2) * (color2 - 1)) // 2) + color1
 
+    @validate_enc
     def enumeration_label(self, token: Any, color: int) -> int:
         """ Literature refers to these variables as m """
-        assert (color >= 0), "color must be non-negative"
-        assert (color < self.n_colors), "color2 must be smaller than n_colors"
-        assert (token < self.n_tokens) and (token >= 0), "token must be nonnegative and smaller than n_tokens"
         return sum(self.counts[:5]) + 1 + self.n_tokens * color + token
 
 
@@ -140,21 +139,15 @@ class Codec:
 # ================= Clause Generator =====================
 
 
-def dfa_id_encodings(apta: APTA, symm_mode: SymmBreak = SymmBreak.CLIQUE) -> Iterable[Clauses]:
+def dfa_id_encodings(apta: APTA, symm_mode: Optional[Literal["clique", "bfs"]] = None) -> Iterable[Clauses]:
     cgraph = apta.consistency_graph()
-    if symm_mode == SymmBreak.CLIQUE:
-        clique = max_clique(cgraph)
-        min_color = len(clique)
-    else:
-        min_color = 1
+    clique = max_clique(cgraph) if symm_mode == "clique" else None
+    min_color = len(clique) if symm_mode == "clique" else 1
 
     for n_colors in range(min_color, len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors, symm_mode = symm_mode)
         print("{} \tGenerating clauses for \t\tnodes = {} \tcolors = {}".format(datetime.now().strftime("%y%m%d-%H:%M:%S"),codec.n_nodes, codec.n_colors))
-        if symm_mode == SymmBreak.CLIQUE:
-            yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
-        else:
-            yield codec, list(encode_dfa_id(apta, codec, cgraph))
+        yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
 
 def encode_dfa_id(apta, codec, cgraph, clique = None):
     # Clauses from Table 1.                                      rows
@@ -163,9 +156,9 @@ def encode_dfa_id(apta, codec, cgraph, clique = None):
     yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
     yield from onehot_parent_relation_clauses(codec)           # 4, 6
     yield from determination_conflicts(codec, cgraph)          # 8
-    if codec.symm_mode == SymmBreak.CLIQUE:
+    if codec.symm_mode == "clique":
         yield from symmetry_breaking(codec, clique)
-    elif codec.symm_mode == SymmBreak.BFS:
+    elif codec.symm_mode == "bfs":
         yield from symmetry_breaking_common(codec)
         yield from symmetry_breaking_bfs(codec)
 
@@ -244,14 +237,13 @@ def symmetry_breaking_common(codec: Codec) -> Clauses:
         for color1 in range(color2):
             p = codec.enumeration_parent(color1, color2)
             t = codec.transition_relation(color1, color2)
+            # m = partial(codec.enumeration_label, color2 = color2)
+            # y = partial(codec.parent_relation, color1 = color1, color2 = color2)
             m = lambda l: codec.enumeration_label(l, color2)
             y = lambda l: codec.parent_relation(l, color1, color2)
 
             yield [-t] + [y(token) for token in range(codec.n_tokens)] # 1
             yield [t, -p] # 3
-
-            # yield from [[t, -y(token)] for token in range(codec.n_tokens)] # 2
-            # yield from [[-p, -t(token), y(token)] for token in range(codec.n_tokens)] # 5
 
             for token2 in range(codec.n_tokens):
                 yield [t, -y(token2)] # 2

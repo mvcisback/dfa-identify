@@ -1,6 +1,6 @@
 import random
 from itertools import groupby
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 import funcy as fn
@@ -8,7 +8,7 @@ from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
 
 from dfa_identify.graphs import Word, APTA
-from dfa_identify.encoding import dfa_id_encodings, Codec, SymmBreak
+from dfa_identify.encoding import dfa_id_encodings, Codec
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -62,7 +62,7 @@ def find_dfa(
         accepting: list[Word], 
         rejecting: list[Word],
         solver_fact=Glucose4, 
-        symm_mode: SymmBreak = SymmBreak.CLIQUE
+        symm_mode: Optional[Literal["clique", "bfs"]] = None
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
