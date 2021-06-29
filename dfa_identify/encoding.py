@@ -8,6 +8,7 @@ import funcy as fn
 import networkx as nx
 from networkx.algorithms.approximation.clique import max_clique
 from enum import Enum
+from datetime import datetime
 
 from dfa_identify.graphs import APTA, Node
 
@@ -141,14 +142,19 @@ class Codec:
 
 def dfa_id_encodings(apta: APTA, symm_mode: SymmBreak = SymmBreak.CLIQUE) -> Iterable[Clauses]:
     cgraph = apta.consistency_graph()
-    clique = max_clique(cgraph)
+    if symm_mode == SymmBreak.CLIQUE:
+        clique = max_clique(cgraph)
+        min_color = len(clique)
+    else:
+        min_color = 1
 
-    for n_colors in range(len(clique), len(apta.nodes) + 1):
+    for n_colors in range(min_color, len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors, symm_mode = symm_mode)
-        if symm_mode == SymmBreak.NONE:
-            yield codec, list(encode_dfa_id(apta, codec, cgraph))
-        else:
+        print("{} \tGenerating clauses for \t\tnodes = {} \tcolors = {}".format(datetime.now().strftime("%y%m%d-%H:%M:%S"),codec.n_nodes, codec.n_colors))
+        if symm_mode == SymmBreak.CLIQUE:
             yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
+        else:
+            yield codec, list(encode_dfa_id(apta, codec, cgraph))
 
 def encode_dfa_id(apta, codec, cgraph, clique = None):
     # Clauses from Table 1.                                      rows

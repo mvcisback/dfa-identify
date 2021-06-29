@@ -1,6 +1,7 @@
 import random
 from itertools import groupby
 from typing import Optional
+from datetime import datetime
 
 import funcy as fn
 from dfa import dict2dfa, DFA
@@ -77,6 +78,7 @@ def find_dfa(
     
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
     for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
+        print("{} \tSolving SAT problem for \tcolors = {} \tclauses = {}".format(datetime.now().strftime("%y%m%d-%H:%M:%S"),codec.n_colors, len(clauses)))
         with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)
