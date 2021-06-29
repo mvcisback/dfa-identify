@@ -1,11 +1,15 @@
 from dfa_identify import find_dfa
-from dfa_identify.encoding import SymmBreak
 from dfa.draw import write_dot
+from typing import Optional, Literal
 import numpy as np
-import time
 import os
-import unittest
 import attr
+from datetime import datetime
+
+from pysat.solvers import Glucose4
+from dfa_identify.identify import extract_dfa
+from dfa_identify.graphs import Word, APTA
+from dfa_identify.encoding import dfa_id_encodings
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class IdProblem:
@@ -13,62 +17,94 @@ class IdProblem:
     rejecting: list[str]
     size: int # min DFA size
 
+outdir = os.path.join(os.path.split(os.path.realpath(__file__))[0],"outputs")
 
-class TestIdentify(unittest.TestCase):
+accepting = ['a', 'abaa', 'bb']
+rejecting = ['abb', 'b']
+problem1 = IdProblem(accepting, rejecting, 3)
+
+accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
+rejecting = [[0, 'z', 'z'], ['z']]
+problem2 = IdProblem(accepting, rejecting, 3)
+
+accepting = ['ab', 'b', 'ba', 'bbb']
+rejecting = ['abbb', 'baba']
+problem3 = IdProblem(accepting, rejecting, 3)
+
+accepting = ['aaaab', 'aaaabaaaab', 'aaaabaaaabaaaab']
+rejecting = ['aaab', 'bb', 'aaaabb', 'aaaaaa', 'abba', 'ab', 'b', 'aab','a','aabb','ba', 'aba', 'bab','aaaaa','aa','aaa','aaaa','baab','bbaaab','bbaab','bbb']
+problem4 = IdProblem(accepting, rejecting, 5)
+
+accepting = ['aaaa','aabb','abab','abba','baab','baba','bbaa','bbbb','aaa','b']
+rejecting = ['aaab','aaba','abaa','abbb','baaa','babb','bbab','bbba']
+problem5 = IdProblem(accepting, rejecting, 4)
+
+def rand_test_set(alphabet, f, set_sz, p=0.8):
+    positives = set()
+    negatives = set()
+    while (len(positives) + len(negatives)) < set_sz:
+        x = ""
+        while np.random.rand() < p:
+            x += str(np.random.choice(alphabet))
+        if f(x):
+            positives.add(x)
+        else:
+            negatives.add(x)
+    return list(positives), list(negatives)
+
+def generate_problem(n, input_sz, bypass = False):
+    def g(x):
+        ones = [a for a in x if a == '1']
+        return 1 if len(ones) % n == 0 else 0
+    accepting, rejecting = rand_test_set([0,1], g, input_sz)
+    if bypass:
+        return IdProblem(accepting, rejecting, 0)
+    problem = IdProblem(accepting, rejecting, n)
+    return problem
+
+def solve_and_check(problem: IdProblem, symm_mode: Optional[Literal["clique", "bfs"]] = "clique"):
+    accepting = problem.accepting
+    rejecting = problem.rejecting
     
-    outdir = os.path.join(os.path.split(os.path.realpath(__file__))[0],"outputs")
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, symm_mode = symm_mode)
+
+    # check that identified DFA fits observations
+    for x in accepting:
+        assert my_dfa.label(x)
+
+    for x in rejecting:
+        assert not my_dfa.label(x)
+
+    # check that returned DFA is minimal (check bypassed if problem.size = 0)
+    assert (problem.size == 0) or len(my_dfa.states()) == problem.size
+    return my_dfa
+
+def solve_and_check_exhaustively(problem: IdProblem, symm_mode: Optional[Literal["clique", "bfs"]] = "clique"):
+    accepting = problem.accepting
+    rejecting = problem.rejecting
+    solutions = []
     
+    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
+    for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
+        print("{} \tSolving SAT problem for \tcolors = {} \tclauses = {}".format(datetime.now().strftime("%y%m%d-%H:%M:%S"),codec.n_colors, len(clauses)))
+        with Glucose4() as solver:
+            for clause in clauses:
+                solver.add_clause(clause)
 
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
-    problem1 = IdProblem(accepting, rejecting, 3)
+            while solver.solve():
+                model = solver.get_model()
+                solutions.append(extract_dfa(codec, apta, model))
+                model_trunc = model[:sum(codec.counts[:3])]
+                solver.add_clause([-lit for lit in model_trunc])
+                # print(model)
+                # model_trunc = model[:sum(codec.counts[:6])]
+                # solver.add_clause([-lit for lit in model_trunc])
+            
+            if len(solutions) > 0:
+                break
 
-    accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
-    rejecting = [[0, 'z', 'z'], ['z']]
-    problem2 = IdProblem(accepting, rejecting, 3)
-    
-    accepting = ['ab', 'b', 'ba', 'bbb']
-    rejecting = ['abbb', 'baba']
-    problem3 = IdProblem(accepting, rejecting, 3)
-
-    accepting = ['aaaab', 'aaaabaaaab', 'aaaabaaaabaaaab']
-    rejecting = ['aaab', 'bb', 'aaaabb', 'aaaaaa', 'abba', 'ab', 'b', 'aab','a','aabb','ba', 'aba', 'bab','aaaaa','aa','aaa','aaaa','baab','bbaaab','bbaab','bbb']
-    problem4 = IdProblem(accepting, rejecting, 5)
-
-    accepting = ['aaaa','aabb','abab','abba','baab','baba','bbaa','bbbb','aaa','b']
-    rejecting = ['aaab','aaba','abaa','abbb','baaa','babb','bbab','bbba']
-    problem5 = IdProblem(accepting, rejecting, 4)
-
-    def rand_test_set(self, alphabet, f, set_sz, p=0.8):
-        positives = set()
-        negatives = set()
-        while (len(positives) + len(negatives)) < set_sz:
-            x = ""
-            while np.random.rand() < p:
-                x += str(np.random.choice(alphabet))
-            if f(x):
-                positives.add(x)
-            else:
-                negatives.add(x)
-        return list(positives), list(negatives)
-
-    def generate_problem(self, n, input_sz, bypass = False):
-        def g(x):
-            ones = [a for a in x if a == '1']
-            return 1 if len(ones) % n == 0 else 0
-        accepting, rejecting = self.rand_test_set([0,1], g, input_sz)
-        if bypass:
-            return IdProblem(accepting, rejecting, 0)
-        problem = IdProblem(accepting, rejecting, n)
-        return problem
-
-    def solve_and_check(self, problem: IdProblem, symm_mode: SymmBreak = SymmBreak.CLIQUE):
-        accepting = problem.accepting
-        rejecting = problem.rejecting
-        
-        my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, symm_mode = symm_mode)
-
-        # check that identified DFA fits observations
+    # check that identified DFA fits observations
+    for my_dfa in solutions:
         for x in accepting:
             assert my_dfa.label(x)
 
@@ -77,84 +113,67 @@ class TestIdentify(unittest.TestCase):
 
         # check that returned DFA is minimal (check bypassed if problem.size = 0)
         assert (problem.size == 0) or len(my_dfa.states()) == problem.size
-        return my_dfa
+    return solutions
 
-    def test_identify(self):
+def test_identify():
 
-        symm = SymmBreak.BFS
+    symm = "bfs"
 
-        self.solve_and_check(self.problem1, symm_mode = symm)
+    solve_and_check(problem1, symm_mode = symm)
 
-        my_dfa = self.solve_and_check(self.problem2, symm_mode = symm)
-        write_dot(my_dfa, os.path.join(self.outdir,"test1.dot"))
+    my_dfa = solve_and_check(problem2, symm_mode = symm)
+    write_dot(my_dfa, os.path.join(outdir,"test1.dot"))
 
-        my_dfa = self.solve_and_check(self.problem3, symm_mode = symm)
-        write_dot(my_dfa, os.path.join(self.outdir,"test2.dot"))
+    my_dfa = solve_and_check(problem3, symm_mode = symm)
+    write_dot(my_dfa, os.path.join(outdir,"test2.dot"))
 
-        my_dfa = self.solve_and_check(self.problem5, symm_mode = symm)
-        write_dot(my_dfa, os.path.join(self.outdir,"test3.dot"))
+    my_dfa = solve_and_check(problem5, symm_mode = symm)
+    write_dot(my_dfa, os.path.join(outdir,"test3.dot"))
+
+def test_identify_exhaustively():
     
-    def test_identify_2(self):
+    symm = "bfs"
 
-        input_sz = 200
-        
-        symm = SymmBreak.NONE
-        start = 0
-        end = 5
-        step = 1
-        problems = {}
+    print("Performing exhaustive search")
+    solutions = solve_and_check_exhaustively(problem2, symm_mode = symm)
+    for i, my_dfa in enumerate(solutions):
+        write_dot(my_dfa, os.path.join(outdir,"problem2_soln{}.dot".format(i)))
+    print("{} solutions found for problem2, using BFS symmetry-breaking.".format(len(solutions)))
 
-        for n in range(start, end, step):
-            problems[n] = self.generate_problem(8, input_sz, bypass=True)
-            # problems[n] = self.generate_problem(n, input_sz, bypass=True)
+    solutions = solve_and_check_exhaustively(problem3, symm_mode = symm)
+    for i, my_dfa in enumerate(solutions):
+        write_dot(my_dfa, os.path.join(outdir,"problem3_soln{}.dot".format(i)))
+    print("{} solutions found for problem3, using BFS symmetry-breaking.".format(len(solutions)))
 
-        print("Running tests for no symmetry breaking...")
-        for n in range(start, end, step):
+    problem6 = generate_problem(8, 500)
+    solutions = solve_and_check_exhaustively(problem6, symm_mode = symm)
+    for i, my_dfa in enumerate(solutions):
+        write_dot(my_dfa, os.path.join(outdir,"problem6_soln{}.dot".format(i)))
+    print("{} solutions found for problem6, using BFS symmetry-breaking.".format(len(solutions)))
 
-            t0 = time.time()
-            dfa1 = self.solve_and_check(problems[n], symm_mode=symm)
-            elapsed = time.time() - t0
-            
-            print("solved n = {} with no symmetry-breaking in {:.4g}s".format(n,elapsed))
-            write_dot(dfa1, os.path.join(self.outdir,"longtest_n-{}_symm-{}.dot".format(n,symm)))
-        
-        symm = SymmBreak.CLIQUE
-        print("Running tests for clique-based symmetry breaking...")
-        for n in range(start, end, step):
+    problem7 = generate_problem(10, 500)
+    solutions = solve_and_check_exhaustively(problem7, symm_mode = symm)
+    for i, my_dfa in enumerate(solutions):
+        write_dot(my_dfa, os.path.join(outdir,"problem7_soln{}.dot".format(i)))
+    print("{} solutions found for problem7, using BFS symmetry-breaking.".format(len(solutions)))
 
-            t0 = time.time()
-            dfa1 = self.solve_and_check(problems[n], symm_mode=symm)
-            elapsed = time.time() - t0
-            
-            print("solved n = {} with clique-based symmetry-breaking in {:.4g}s".format(n,elapsed))
-            write_dot(dfa1, os.path.join(self.outdir,"longtest_n-{}_symm-{}.dot".format(n,symm)))
-        
-        symm = SymmBreak.BFS
-        print("Running tests for BFS symmetry breaking...")
-        for n in range(start, end, step):
-            
-            t0 = time.time()
-            dfa1 = self.solve_and_check(problems[n], symm_mode=symm)
-            elapsed = time.time() - t0
-            
-            print("solved n = {} with BFS symmetry-breaking in {:.4g}s".format(n,elapsed))
-            write_dot(dfa1, os.path.join(self.outdir,"longtest_n-{}_symm-{}.dot".format(n,symm)))
 
-    def test_identify_repeatedly(self):
+def test_identify_repeatedly():
 
-        symm = SymmBreak.BFS
+    symm = "bfs"
 
-        for i in range(50):
-            self.solve_and_check(self.problem1, symm_mode = symm)
+    for i in range(20):
+        solve_and_check(problem1, symm_mode = symm)
 
-        for i in range(50):
-            self.solve_and_check(self.problem3, symm_mode = symm)
+    for i in range(20):
+        solve_and_check(problem3, symm_mode = symm)
 
-        for i in range(50):
-            self.solve_and_check(self.problem4, symm_mode = symm)
+    for i in range(20):
+        solve_and_check(problem4, symm_mode = symm)
 
-        for i in range(50):
-            self.solve_and_check(self.problem5, symm_mode = symm)
+    for i in range(20):
+        solve_and_check(problem5, symm_mode = symm)
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__":
+    test_identify()
+    test_identify_exhaustively()
