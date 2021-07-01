@@ -7,7 +7,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-attrs = "^20.3.0"
+attrs = "^21.0.0"
 networkx = "^2.5.1"
 funcy = "^1.15"
 bidict = "^0.21.2"
