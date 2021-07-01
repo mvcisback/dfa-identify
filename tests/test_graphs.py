@@ -1,6 +1,5 @@
 from dfa_identify.graphs import APTA
 
-
 def test_fig1():
     """Example from fig1 in Heule 2010."""
     apta = APTA.from_examples(

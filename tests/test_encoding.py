@@ -1,3 +1,5 @@
+import pytest
+
 from itertools import product
 
 from dfa_identify.graphs import APTA
@@ -7,7 +9,6 @@ from dfa_identify.encoding import (
     ColorNodeVar,
     ParentRelationVar
 )
-
 
 def kind(var):
     if isinstance(var, ColorAcceptingVar):
@@ -19,7 +20,7 @@ def kind(var):
 
 
 def test_codec():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4)
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
@@ -65,6 +66,27 @@ def test_codec():
     assert len(lits) == 9 * 4  # Check bijection.
     assert max(lits) == 3 + 3 * 10 + 9 * 4
 
+def test_symm_break():
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
+    assert kind(codec.decode(1)) == 'color_accepting'
+    assert kind(codec.decode(3)) == 'color_accepting'
+    assert kind(codec.decode(4)) == 'color_node'
+    assert kind(codec.decode(33)) == 'color_node'
+    assert kind(codec.decode(34)) == 'parent_relation'
+
+    p = [codec.enumeration_parent(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
+    t = [codec.transition_relation(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
+    m = [codec.enumeration_label(l,i) for l,i in product(range(codec.n_tokens), range(codec.n_colors))]
+    assert len(p) == 3
+    assert len(t) == 3
+    assert len(m) == 12
+    for i in range(70, 72):
+        assert i in p
+    for i in range(73, 75):
+        assert i in t
+    for i in range(76, 87):
+        assert i in m
+
 
 def test_encode_dfa_id():
     apta = APTA.from_examples(
@@ -78,3 +100,26 @@ def test_encode_dfa_id():
     clauses3 = next(encodings)[1]
     assert 1 < (len(clauses2) / len(clauses1)) < 3
     assert 1 < (len(clauses3) / len(clauses2)) < 3
+
+
+def test_codec_errors():
+    """check that codec performs checks on token and colors being within range"""
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
+    tests = [
+        (codec.color_accepting, (-1,)),
+        (codec.color_accepting, (3,)),
+        (codec.color_node, (-1, 2,)),
+        (codec.color_node, (10, 0,)),
+        (codec.color_node, (9, 3,)),
+        (codec.parent_relation, (-1, 2, 2,)),
+        (codec.parent_relation, (4, 1, 2,)),
+        (codec.enumeration_parent, (2, 2,)),
+        (codec.enumeration_parent, (1, 3,)),
+        (codec.transition_relation, (2, 2,)),
+        (codec.transition_relation, (1, 3,)),
+        (codec.enumeration_label, (-1, 2,)),
+        (codec.enumeration_label, (4, 1,)),
+    ]
+    for func, args in tests:
+        with pytest.raises(AssertionError):
+            func(*args)

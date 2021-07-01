@@ -1,4 +1,4 @@
-from dfa_identify import find_dfa
+from dfa_identify import find_dfa, find_dfas
 
 
 def test_identify():
@@ -30,7 +30,6 @@ def test_identify():
 
 
 def test_identify_repeatedly():
-
     accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']
 
@@ -46,3 +45,24 @@ def test_identify_repeatedly():
 
         # check that minimal dfa is found
         assert len(my_dfa.states()) == 3
+
+
+def test_unique():
+    for symm_mode in ['bfs', 'clique']:
+        dfas = list(find_dfas(
+            accepting=['a', 'ab'], 
+            rejecting=['', 'b', 'aa'],
+            symm_mode=symm_mode,
+        ))
+        # TODO: should be 1.
+        assert 0 < len(dfas) < 5
+
+
+def test_enumerate():
+    for symm_mode in ['bfs', 'clique']:
+        dfas = list(find_dfas(
+            accepting=['a'], 
+            rejecting=['', 'b'],
+            symm_mode=symm_mode,
+        ))
+        assert 4 <= len(dfas)< 18

@@ -1,20 +1,46 @@
 from __future__ import annotations
 
+import inspect
 from itertools import product
-from typing import Any, Iterable, Union
+from functools import wraps
+from typing import Any, NamedTuple, Iterable, Literal, Optional, Union
 
 import attr
+import funcy as fn
 import networkx as nx
 from networkx.algorithms.approximation.clique import max_clique
+from functools import partial
 
 from dfa_identify.graphs import APTA, Node
-
 
 Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 
 
+def encoder(offset):
+    def _encoder(func):
+        sig = inspect.signature(func)
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            bound = sig.bind_partial(self, *args, **kwargs)
+            for key, val in bound.arguments.items():
+                if key.startswith('color'):
+                    assert 0 <= val < self.n_colors
+                elif key.startswith('node'):
+                    assert 0 <= val < self.n_nodes
+                elif key.startswith('token'):
+                    assert 0 <= val < self.n_tokens
+
+            base = self.offsets[offset] 
+            return func(self, *args, **kwargs) + base
+        return wrapper
+    return _encoder
+
 # =================== Codec : int <-> variable  ====================
+
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class AuxillaryVar:
+    idx: int
 
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
@@ -38,7 +64,7 @@ class ParentRelationVar:
     true: bool
 
 
-Var = Union[ColorAcceptingVar, ColorNodeVar, ParentRelationVar]
+Var = Union[ColorAcceptingVar, ColorNodeVar, ParentRelationVar, AuxillaryVar]
 
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
@@ -46,59 +72,104 @@ class Codec:
     n_nodes: int
     n_colors: int
     n_tokens: int
+    symm_mode: Optional[Literal["clique", "bfs"]]
+
+    def __attrs_post_init__(self):
+        object.__setattr__(self, "counts", ( 
+            self.n_colors,                                    # z
+            self.n_colors * self.n_nodes,                     # x
+            self.n_tokens * self.n_colors * self.n_colors,    # y
+            (self.n_colors * (self.n_colors - 1)) // 2,       # p
+            (self.n_colors * (self.n_colors - 1)) // 2,       # t
+            self.n_colors * self.n_tokens,                    # m
+        ))
+        object.__setattr__(self, "offsets", tuple([0] + fn.lsums(self.counts)))
 
     @staticmethod
-    def from_apta(apta: APTA, n_colors: int = 0) -> Codec:
-        return Codec(len(apta.nodes), n_colors, len(apta.alphabet))
+    def from_apta(apta: APTA, n_colors: int = 0, symm_mode: Optional[Literal["clique", "bfs"]] = None) -> Codec:
+        return Codec(len(apta.nodes), n_colors, len(apta.alphabet), symm_mode)
 
+    @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
+        """ Literature refers to these variables as z """
         return 1 + color
 
+    @encoder(offset=1)
     def color_node(self, node: int, color: int) -> int:
-        return 1 + self.n_colors * (1 + node) + color
+        """ Literature refers to these variables as x """
+        return 1 + self.n_colors * node + color
 
+    @encoder(offset=2)
     def parent_relation(self, token: Any, color1: int, color2: int) -> int:
+        """ Literature refers to these variables as y """
         a = self.n_colors
         b = a**2
-        c = 1 + self.n_colors * (1 + self.n_nodes)
-        return color1 + a * color2 + b * token + c
+        return 1 + color1 + a * color2 + b * token
+
+    # --------------------- BFS Symm_Mode Only ---------------------------
+    @encoder(offset=3)
+    def enumeration_parent(self, color1: int, color2: int) -> int:
+        """ Literature refers to these variables as p
+        Note: here we use p_{i,j} rather than p_{j,i} """
+        assert (color1 < color2), "color1 must be smaller than color2"
+        return 1 + (((color2) * (color2 - 1)) // 2) + color1
+
+    @encoder(offset=4)
+    def transition_relation(self, color1: int, color2: int) -> int:
+        """ Literature refers to these variables as t """
+        assert (color1 < color2), "color1 must be smaller than color2"
+        return 1 + (((color2) * (color2 - 1)) // 2) + color1
+
+    @encoder(offset=5)
+    def enumeration_label(self, token: Any, color: int) -> int:
+        """ Literature refers to these variables as m """
+        return 1 + self.n_tokens * color + token
+
+    # -------------------------------------------------------------------
 
     def decode(self, lit: int) -> Var:
         idx = abs(lit) - 1
         color1, true = idx % self.n_colors, lit > 0
-        kind_idx = idx // self.n_colors
-        if kind_idx == 0:
+        if idx < self.offsets[1]:
             return ColorAcceptingVar(color1, true)
-        elif 1 <= kind_idx <= self.n_nodes:
+        elif idx < self.offsets[2]:
             node = (idx - color1) // self.n_colors - 1
             return ColorNodeVar(color1, true, node)
-        tmp = idx - self.n_colors * (1 + self.n_nodes)
-        tmp //= self.n_colors
-        color2 = tmp % self.n_colors
-        token = tmp // self.n_colors
-        return ParentRelationVar(color1, color2, token, true)
+        elif idx < self.offsets[3]:
+            tmp = idx - self.n_colors * (1 + self.n_nodes)
+            tmp //= self.n_colors
+            color2 = tmp % self.n_colors
+            token = tmp // self.n_colors
+            return ParentRelationVar(color1, color2, token, true)
+
+        return AuxillaryVar(idx)
 
 
 # ================= Clause Generator =====================
 
 
-def dfa_id_encodings(apta: APTA) -> Iterable[Clauses]:
+def dfa_id_encodings(apta: APTA, symm_mode: Optional[Literal["clique", "bfs"]] = None) -> Iterable[Clauses]:
     cgraph = apta.consistency_graph()
-    clique = max_clique(cgraph)
+    clique = max_clique(cgraph) if symm_mode == "clique" else None
+    min_color = len(clique) if symm_mode == "clique" else 1
 
-    for n_colors in range(len(clique), len(apta.nodes) + 1):
-        codec = Codec.from_apta(apta, n_colors)
-        yield codec, list(encode_dfa_id(apta, codec, clique, cgraph))
+    for n_colors in range(min_color, len(apta.nodes) + 1):
+        codec = Codec.from_apta(apta, n_colors, symm_mode = symm_mode)
+        yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
 
 
-def encode_dfa_id(apta, codec, clique, cgraph):
+def encode_dfa_id(apta, codec, cgraph, clique = None):
     # Clauses from Table 1.                                      rows
-    yield from onehot_color_clauses(codec)                      # 1, 5
-    yield from partition_by_accepting_clauses(codec, apta)      # 2
-    yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
-    yield from onehot_parent_relation_clauses(codec)            # 4, 6
-    yield from determination_conflicts(codec, cgraph)           # 8
-    yield from symmetry_breaking(codec, clique)
+    yield from onehot_color_clauses(codec)                     # 1, 5
+    yield from partition_by_accepting_clauses(codec, apta)     # 2
+    yield from colors_parent_rel_coupling_clauses(codec, apta) # 3, 7
+    yield from onehot_parent_relation_clauses(codec)           # 4, 6
+    yield from determination_conflicts(codec, cgraph)          # 8
+    if codec.symm_mode == "clique":
+        yield from symmetry_breaking(codec, clique)
+    elif codec.symm_mode == "bfs":
+        yield from symmetry_breaking_common(codec)
+        yield from symmetry_breaking_bfs(codec)
 
 
 def onehot_color_clauses(codec: Codec) -> Clauses:
@@ -165,4 +236,62 @@ def symmetry_breaking(codec: Codec, clique: Nodes) -> Clauses:
         yield [codec.color_node(node, color)]
 
 
+def symmetry_breaking_common(codec: Codec) -> Clauses:
+    """ 
+    Symmetry breaking clauses for both DFS and BFS
+    See Ulyantsev 2016 
+    """
+    # Ensures start vertex is 0 - not listed in Ulyantsev
+    yield [codec.color_node(0,0)] 
+
+    for color2 in range(codec.n_colors):
+        if color2 > 0:
+            yield [codec.enumeration_parent(color1, color2) for color1 in range(color2)] # 4
+        for color1 in range(color2):
+            p = codec.enumeration_parent(color1, color2)
+            t = codec.transition_relation(color1, color2)
+            m = partial(codec.enumeration_label, color=color2)
+            y = partial(codec.parent_relation, color1=color1, color2=color2)
+
+            yield [-t] + [y(token) for token in range(codec.n_tokens)] # 1
+            yield [t, -p] # 3
+
+            for token2 in range(codec.n_tokens):
+                yield [t, -y(token2)] # 2
+                yield [-p, -m(token2), y(token2)] # 5
+                yield [-y(token2), -p, m(token2)] + [y(token1) for token1 in range(token2)] # 7
+                for token1 in range(token2):
+                    yield [-p, -m(token2), -y(token1)] # 6
+
+ 
+def symmetry_breaking_bfs(codec: Codec) -> Clauses:
+    """ 
+    Symmetry breaking clauses for BFS
+    See Ulyantsev 2016 
+    """
+    for color2 in range(codec.n_colors):
+        t_2 = partial(codec.transition_relation, color2=color2)
+        for color1 in range(color2):
+            p12 = codec.enumeration_parent(color1, color2)
+            t12 = codec.transition_relation(color1, color2)
+
+            yield from [[-p12, -t_2(color3)] for color3 in range(color1)]  # 12
+            yield [-t12, p12] + [t_2(color_3) for color3 in range(color1)] # 13
+
+            if color2 + 1 >= codec.n_colors:
+                continue
+
+            for color3 in range(color1):
+                yield [-p12, -codec.enumeration_parent(color3, color2 + 1)] # 14
+
+            for token2 in range(codec.n_tokens):
+                for token1 in range(token2):
+                    yield [
+                        -p12,
+                        -codec.enumeration_parent(color1, color2 + 1),
+                        -codec.enumeration_label(token2, color2),
+                        -codec.enumeration_label(token1, color2 + 1)
+                    ] # 15
+
+ 
 __all__ = ['Codec', 'dfa_id_encodings']

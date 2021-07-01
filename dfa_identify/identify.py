@@ -1,5 +1,6 @@
 from itertools import groupby
-from typing import Optional
+from typing import Optional, Literal, Iterable
+from datetime import datetime
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
@@ -15,7 +16,9 @@ from dfa_identify.encoding import (
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
-    decoded = map(codec.decode, model)
+    # TODO: decode all variables.
+    n_variables = sum(codec.counts[:3])
+    decoded = map(codec.decode, model[:n_variables])
     decoded = list(decoded)
     var_groups = groupby(decoded, type)
 
@@ -52,10 +55,44 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     return dict2dfa(dfa_dict, start=node2color[0])
 
 
+def find_dfas(
+        accepting: list[Word],
+        rejecting: list[Word],
+        solver_fact=Glucose4,
+        symm_mode: Optional[Literal["clique", "bfs"]] = "bfs",
+) -> Iterable[DFA]:
+    """Finds all minimal dfa that are consistent with the labeled examples.
+    
+    Here "minimal" means that a no DFA with smaller size is consistent with
+    the data. Thus, all returns DFAs are the same size.
+    
+    Inputs:
+      - accepting: A sequence of "words" to be accepted.
+      - rejecting: A sequence of "words" to be rejected.
+      - solver: A py-sat API compatible object for solving CNF SAT queries.
+
+    Returns:
+      An iterable of all minimal DFA consistent with accepting and rejecting.
+    """
+    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
+    for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
+        with solver_fact() as solver:
+            for clause in clauses:
+                solver.add_clause(clause)
+
+            if not solver.solve():
+                continue
+
+            models = solver.enum_models()
+            yield from (extract_dfa(codec, apta, model) for model in models)
+            return
+
+
 def find_dfa(
         accepting: list[Word],
         rejecting: list[Word],
         solver_fact=Glucose4,
+        symm_mode: Optional[Literal["clique", "bfs"]] = "clique",
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -68,16 +105,7 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-
-    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
-    for codec, clauses in dfa_id_encodings(apta):
-        with solver_fact() as solver:
-            for clause in clauses:
-                solver.add_clause(clause)
-
-            if solver.solve():
-                model = solver.get_model()
-                return extract_dfa(codec, apta, model)
+    return next(find_dfas(accepting, rejecting, solver_fact, symm_mode), None)
 
 
-__all__ = ['find_dfa', 'extract_dfa']
+__all__ = ['find_dfas', 'find_dfa', 'extract_dfa']
