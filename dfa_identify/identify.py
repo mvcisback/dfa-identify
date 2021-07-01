@@ -1,6 +1,5 @@
 from itertools import groupby
 from typing import Optional, Literal, Iterable
-from datetime import datetime
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4

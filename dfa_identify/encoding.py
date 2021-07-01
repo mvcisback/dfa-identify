@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from itertools import product
 from functools import wraps
-from typing import Any, NamedTuple, Iterable, Literal, Optional, Union
+from typing import Any, Iterable, Literal, Optional, Union
 
 import attr
 import funcy as fn
@@ -17,9 +17,13 @@ Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 
 
+# =================== Codec : int <-> variable  ====================
+
+
 def encoder(offset):
     def _encoder(func):
         sig = inspect.signature(func)
+
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             bound = sig.bind_partial(self, *args, **kwargs)
@@ -31,12 +35,11 @@ def encoder(offset):
                 elif key.startswith('token'):
                     assert 0 <= val < self.n_tokens
 
-            base = self.offsets[offset] 
+            base = self.offsets[offset]
             return func(self, *args, **kwargs) + base
         return wrapper
     return _encoder
 
-# =================== Codec : int <-> variable  ====================
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class AuxillaryVar:
@@ -75,7 +78,7 @@ class Codec:
     symm_mode: Optional[Literal["clique", "bfs"]]
 
     def __attrs_post_init__(self):
-        object.__setattr__(self, "counts", ( 
+        object.__setattr__(self, "counts", (
             self.n_colors,                                    # z
             self.n_colors * self.n_nodes,                     # x
             self.n_tokens * self.n_colors * self.n_colors,    # y
@@ -150,10 +153,9 @@ class Codec:
 
 def dfa_id_encodings(apta: APTA, symm_mode: Optional[Literal["clique", "bfs"]] = None) -> Iterable[Clauses]:
     cgraph = apta.consistency_graph()
-    clique = max_clique(cgraph) if symm_mode == "clique" else None
-    min_color = len(clique) if symm_mode == "clique" else 1
+    clique = max_clique(cgraph)
 
-    for n_colors in range(min_color, len(apta.nodes) + 1):
+    for n_colors in range(len(clique), len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors, symm_mode = symm_mode)
         yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
 
@@ -276,7 +278,7 @@ def symmetry_breaking_bfs(codec: Codec) -> Clauses:
             t12 = codec.transition_relation(color1, color2)
 
             yield from [[-p12, -t_2(color3)] for color3 in range(color1)]  # 12
-            yield [-t12, p12] + [t_2(color_3) for color3 in range(color1)] # 13
+            yield [-t12, p12] + [t_2(color3) for color3 in range(color1)] # 13
 
             if color2 + 1 >= codec.n_colors:
                 continue
