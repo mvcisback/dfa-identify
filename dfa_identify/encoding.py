@@ -154,7 +154,11 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
             yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), less_pref_color_lit, -more_pref_color_lit]
                         for nl, np in apta.incomparable_preferences)
 
-
+def augmented_set_clauses(codec: Codec, apta: APTA) -> Clauses:
+    for c in range(codec.n_colors):
+        lit = codec.color_accepting(c)
+        yield from ([-codec.color_node(n, c), lit] for n in apta.augmented_original_rejecting)
+        yield from ([-codec.color_node(n, c), -lit] for n in apta.augmented_original_accepting)
 
 # couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:

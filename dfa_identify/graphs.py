@@ -31,6 +31,8 @@ class APTA:
     rejecting_nodes: set[Node]  # Rejecting states in the DFA.
     ord_prefs: set[Tuple[Node, Node]]  # MemReP 'ordered' preferences (less_preferred_word, more_preferred_word)
     inc_prefs: set[Tuple[Node, Node]]  # MemReP 'incomparable' preferences (incomparable_word_1, incomparable_word_2)
+    augmented_original_accepting_nodes: set[Node]  # an original DFA accepted these nodes during Lstar
+    augmented_original_rejecting_nodes: set[Node]  # an original DFA rejected these nodes during Lstar
 
 
     @property
@@ -57,20 +59,32 @@ class APTA:
     def incomparable_preferences(self) -> set[Tuple[Node, Node]]:
         return self.inc_prefs
 
+    @property
+    def augmented_original_accepting(self) -> set[Node]:
+        return self.augmented_original_accepting_nodes
+
+    @property
+    def augmented_original_rejecting(self) -> set[Node]:
+        return self.augmented_original_rejecting_nodes
 
     @staticmethod
     def from_examples(accepting: list[Word], rejecting: list[Word],
                       ordered_preference_words: list[Tuple[Word, Word]] = None,
-                      incomparable_preference_words: list[Tuple[Word, Word]] = None) -> APTA:
+                      incomparable_preference_words: list[Tuple[Word, Word]] = None,
+                      augmented_orig_dfa_accepting: list[Word] = None,
+                      augmented_orig_dfa_rejecting: list[Word] = None) -> APTA:
         """Return Augmented Prefix Tree Automata for accepting, rejecting."""
         # If preference tuples weren't provided, initialize them as empty lists
-        if ordered_preference_words is None:
-            ordered_preference_words = []
-        if incomparable_preference_words is None:
-            incomparable_preference_words = []
+        ordered_preference_words = [] if ordered_preference_words is None else ordered_preference_words
+        incomparable_preference_words = [] if incomparable_preference_words is None else incomparable_preference_words
+        # if augmented sets weren't provided (we're not in an incomparable synthesis step), initialize them
+        augmented_orig_dfa_accepting = [] if augmented_orig_dfa_accepting is None else augmented_orig_dfa_accepting
+        augmented_orig_dfa_rejecting = [] if augmented_orig_dfa_rejecting is None else augmented_orig_dfa_rejecting
+
         # Create prefix tree.
         tree, root = nx.prefix_tree(chain(accepting, rejecting, list(chain(*ordered_preference_words)),
-                                          list(chain(*incomparable_preference_words))))
+                                          list(chain(*incomparable_preference_words)), augmented_orig_dfa_accepting,
+                                          augmented_orig_dfa_rejecting))
         tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
 
         # Label nodes with integers. With root = 0.
@@ -99,6 +113,15 @@ class APTA:
                 else:
                     rejecting_nodes.add(access(word))
 
+        # Build the "augmented" sets from an original DFA's labels.
+        augmented_orig_dfa_accept_nodes, augmented_orig_dfa_reject_nodes = set(), set()
+        for label, words in [(True, augmented_orig_dfa_accepting), (False, augmented_orig_dfa_rejecting)]:
+            for word in words:
+                if label:
+                    augmented_orig_dfa_accept_nodes.add(access(word))
+                else:
+                    augmented_orig_dfa_reject_nodes.add(access(word))
+
         # Build the ordered preferences tuple set.
         ordered_preference_nodes = set()
         for (word_one, word_two) in ordered_preference_words:
@@ -110,7 +133,8 @@ class APTA:
             incomparable_preference_nodes.add((access(word_one), access(word_two)))
 
         return APTA(tree, alphabet, accepting_nodes, rejecting_nodes, ordered_preference_nodes,
-                    incomparable_preference_nodes)
+                    incomparable_preference_nodes, augmented_orig_dfa_accept_nodes,
+                    augmented_orig_dfa_reject_nodes)
 
     def consistency_graph(self) -> nx.Graph:
         """Return consistency graph for APTA via repeated DFS."""

@@ -7,12 +7,12 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-attrs = "^20.3.0"
 networkx = "^2.5.1"
 funcy = "^1.15"
 bidict = "^0.21.2"
 python-sat = "^0.1.7-alpha.2"
-dfa = "^2.1.2"
+lstar = "^0.2.9"
+attrs = "^21.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.3"
