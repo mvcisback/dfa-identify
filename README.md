@@ -53,8 +53,8 @@ assert all(my_dfa.label(x) for x in accepting)
 assert all(not my_dfa.label(x) for x in rejecting)
 ```
 
-Because words are sequences of arbitrary python objects, the
-identification problem, with `a` ↦ 0 and `b` ↦ 1, is given below:
+Note that example words can be sequences of arbitrary python objects. For example, the
+above identification problem, with `a` ↦ 0 and `b` ↦ 'z', is given below:
 
 
 ```python
