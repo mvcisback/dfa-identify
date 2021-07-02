@@ -60,6 +60,8 @@ def find_dfa(
         rejecting: list[Word],
         ordered_preference_words: list[Tuple[Word, Word]] = None,
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
+        augmented_original_accepting: list[Word] = None,
+        augmented_original_rejecting: list[Word] = None,
         solver_fact=Glucose4, 
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
@@ -73,8 +75,11 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
-                              incomparable_preference_words=incomparable_preference_words)
+    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting,
+                              ordered_preference_words=ordered_preference_words,
+                              incomparable_preference_words=incomparable_preference_words,
+                              augmented_orig_dfa_accepting=augmented_original_accepting,
+                              augmented_orig_dfa_rejecting=augmented_original_rejecting)
     for codec, clauses in dfa_id_encodings(apta):
         with solver_fact() as solver:
             for clause in clauses:

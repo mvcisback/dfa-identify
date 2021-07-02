@@ -44,10 +44,11 @@ class Codec:
     n_nodes: int
     n_colors: int
     n_tokens: int
+    n_toggles: int
 
     @staticmethod
     def from_apta(apta: APTA, n_colors: int = 0) -> Codec:
-        return Codec(len(apta.nodes), n_colors, len(apta.alphabet))
+        return Codec(len(apta.nodes), n_colors, len(apta.alphabet), len(apta.nodes))
 
     def color_accepting(self, color: int) -> int:  # get color var literal
         return 1 + color
@@ -61,6 +62,12 @@ class Codec:
         b = a**2
         c = 1 + self.n_colors * (1 + self.n_nodes)
         return color1 + a * color2 + b * token + c
+
+    def toggle_var(self, node: int) -> int:  # get toggle var literal
+        a = self.n_colors
+        b = a**2
+        c = 1 + self.n_colors * (1 + self.n_nodes)
+        return (1 + node) + self.n_colors + a * self.n_colors + b * self.n_tokens + c
 
     def decode(self, lit: int) -> Var:
         idx = abs(lit) - 1
@@ -157,8 +164,8 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
 def augmented_set_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
-        yield from ([-codec.color_node(n, c), lit] for n in apta.augmented_original_rejecting)
-        yield from ([-codec.color_node(n, c), -lit] for n in apta.augmented_original_accepting)
+        yield from ([-codec.toggle_var(n), -codec.color_node(n, c), -lit] for n in apta.augmented_original_accepting)
+        yield from ([-codec.toggle_var(n), -codec.color_node(n, c), lit] for n in apta.augmented_original_rejecting)
 
 # couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
