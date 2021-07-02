@@ -48,21 +48,22 @@ def test_identify_repeatedly():
 
 
 def test_unique():
-    for symm_mode in ['bfs', 'clique']:
+    for sym_mode in ['bfs', 'clique']:
         dfas = list(find_dfas(
-            accepting=['a', 'ab'], 
+            accepting=['a', 'ab'],
             rejecting=['', 'b', 'aa'],
-            symm_mode=symm_mode,
+            sym_mode=sym_mode,
         ))
         # TODO: should be 1.
         assert 0 < len(dfas) < 5
 
 
 def test_enumerate():
-    for symm_mode in ['bfs', 'clique']:
+    for sym_mode in ['bfs', 'clique']:
         dfas = list(find_dfas(
-            accepting=['a'], 
+            accepting=['a'],
             rejecting=['', 'b'],
-            symm_mode=symm_mode,
+            sym_mode=sym_mode,
         ))
-        assert 4 <= len(dfas)< 18
+        # TODO: should be 4.
+        assert 4 <= len(dfas) < 18

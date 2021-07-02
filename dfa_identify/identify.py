@@ -1,11 +1,11 @@
 from itertools import groupby
-from typing import Optional, Literal, Iterable
+from typing import Optional, Iterable
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
 
 from dfa_identify.graphs import Word, APTA
-from dfa_identify.encoding import dfa_id_encodings, Codec
+from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -15,9 +15,7 @@ from dfa_identify.encoding import (
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
-    # TODO: decode all variables.
-    n_variables = sum(codec.counts[:3])
-    decoded = map(codec.decode, model[:n_variables])
+    decoded = map(codec.decode, model)
     decoded = list(decoded)
     var_groups = groupby(decoded, type)
 
@@ -58,13 +56,13 @@ def find_dfas(
         accepting: list[Word],
         rejecting: list[Word],
         solver_fact=Glucose4,
-        symm_mode: Optional[Literal["clique", "bfs"]] = "bfs",
+        sym_mode: SymMode = "bfs",
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
-    
+
     Here "minimal" means that a no DFA with smaller size is consistent with
     the data. Thus, all returns DFAs are the same size.
-    
+
     Inputs:
       - accepting: A sequence of "words" to be accepted.
       - rejecting: A sequence of "words" to be rejected.
@@ -74,7 +72,7 @@ def find_dfas(
       An iterable of all minimal DFA consistent with accepting and rejecting.
     """
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
-    for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
+    for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode):
         with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)
@@ -91,7 +89,7 @@ def find_dfa(
         accepting: list[Word],
         rejecting: list[Word],
         solver_fact=Glucose4,
-        symm_mode: Optional[Literal["clique", "bfs"]] = "clique",
+        sym_mode: SymMode = "clique",
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -104,7 +102,7 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-    return next(find_dfas(accepting, rejecting, solver_fact, symm_mode), None)
+    return next(find_dfas(accepting, rejecting, solver_fact, sym_mode), None)
 
 
 __all__ = ['find_dfas', 'find_dfa', 'extract_dfa']

@@ -10,6 +10,7 @@ from dfa_identify.encoding import (
     ParentRelationVar
 )
 
+
 def kind(var):
     if isinstance(var, ColorAcceptingVar):
         return 'color_accepting'
@@ -20,7 +21,7 @@ def kind(var):
 
 
 def test_codec():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
@@ -66,20 +67,25 @@ def test_codec():
     assert len(lits) == 9 * 4  # Check bijection.
     assert max(lits) == 3 + 3 * 10 + 9 * 4
 
+
 def test_symm_break():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
     assert kind(codec.decode(33)) == 'color_node'
     assert kind(codec.decode(34)) == 'parent_relation'
 
-    p = [codec.enumeration_parent(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
-    t = [codec.transition_relation(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
-    m = [codec.enumeration_label(l,i) for l,i in product(range(codec.n_tokens), range(codec.n_colors))]
+    colorsXcolors = list(product(range(codec.n_colors), range(codec.n_colors)))
+    tokensXcolors = product(range(codec.n_tokens), range(codec.n_colors))
+    p = [codec.enumeration_parent(i, j) for i, j in colorsXcolors if i < j]
+    t = [codec.transition_relation(i, j) for i, j in colorsXcolors if i < j]
+    m = [codec.enumeration_label(*x) for x in tokensXcolors]
+
     assert len(p) == 3
     assert len(t) == 3
     assert len(m) == 12
+
     for i in range(70, 72):
         assert i in p
     for i in range(73, 75):
@@ -103,8 +109,8 @@ def test_encode_dfa_id():
 
 
 def test_codec_errors():
-    """check that codec performs checks on token and colors being within range"""
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, symm_mode="bfs")
+    """Check that codec performs checks on token/colors being within range."""
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
     tests = [
         (codec.color_accepting, (-1,)),
         (codec.color_accepting, (3,)),
