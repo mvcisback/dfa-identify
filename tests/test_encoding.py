@@ -74,15 +74,15 @@ def test_symm_break():
 
     p = [codec.enumeration_parent(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
     t = [codec.transition_relation(i,j) for i,j in product(range(codec.n_colors), range(codec.n_colors)) if i < j]
-    m = [codec.enumeration_label(l,i) for l,i in product(range(codec.n_tokens), range(codec.n_colors))]
+    m = [codec.enumeration_label(l,i) for l,i in product(range(codec.n_tokens), range(1,codec.n_colors))]
     assert len(p) == 3
     assert len(t) == 3
-    assert len(m) == 12
+    assert len(m) == 8
     for i in range(70, 72):
         assert i in p
     for i in range(73, 75):
         assert i in t
-    for i in range(76, 87):
+    for i in range(76, 83):
         assert i in m
 
 

@@ -74,7 +74,7 @@ class Codec:
             self.n_tokens * self.n_colors * self.n_colors,
             (self.n_colors * (self.n_colors - 1)) // 2,
             (self.n_colors * (self.n_colors - 1)) // 2,
-            self.n_colors * self.n_tokens
+            (self.n_colors - 1) * self.n_tokens
             ]
 
 
@@ -116,7 +116,8 @@ class Codec:
     @validate_enc
     def enumeration_label(self, token: Any, color: int) -> int:
         """ Literature refers to these variables as m """
-        return sum(self.counts[:5]) + 1 + self.n_tokens * color + token
+        assert (color > 0), "color must be greater than 0"
+        return sum(self.counts[:5]) + 1 + self.n_tokens * (color - 1) + token
 
 
     def decode(self, lit: int) -> Var:

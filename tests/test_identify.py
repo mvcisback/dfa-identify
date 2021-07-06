@@ -88,18 +88,16 @@ def solve_and_check_exhaustively(problem: IdProblem, symm_mode: Optional[Literal
     for codec, clauses in dfa_id_encodings(apta, symm_mode = symm_mode):
         print("{} \tSolving SAT problem for \tcolors = {} \tclauses = {}".format(datetime.now().strftime("%y%m%d-%H:%M:%S"),codec.n_colors, len(clauses)))
         with Glucose4() as solver:
+            # print("clauses:",[clause for clause in clauses if (62 in clause)])
             for clause in clauses:
                 solver.add_clause(clause)
 
             while solver.solve():
                 model = solver.get_model()
                 solutions.append(extract_dfa(codec, apta, model))
-                model_trunc = model[:sum(codec.counts[:3])]
-                solver.add_clause([-lit for lit in model_trunc])
                 # print(model)
-                # model_trunc = model[:sum(codec.counts[:6])]
-                # solver.add_clause([-lit for lit in model_trunc])
-            
+                solver.add_clause([-lit for lit in model])
+
             if len(solutions) > 0:
                 break
 
@@ -139,39 +137,42 @@ def test_identify_exhaustively():
     for i, my_dfa in enumerate(solutions):
         write_dot(my_dfa, os.path.join(outdir,"problem2_soln{}.dot".format(i)))
     print("{} solutions found for problem2, using BFS symmetry-breaking.".format(len(solutions)))
+    assert len(solutions) == 15
 
     solutions = solve_and_check_exhaustively(problem3, symm_mode = symm)
     for i, my_dfa in enumerate(solutions):
         write_dot(my_dfa, os.path.join(outdir,"problem3_soln{}.dot".format(i)))
     print("{} solutions found for problem3, using BFS symmetry-breaking.".format(len(solutions)))
+    assert len(solutions) == 1
 
     problem6 = generate_problem(8, 500)
     solutions = solve_and_check_exhaustively(problem6, symm_mode = symm)
     for i, my_dfa in enumerate(solutions):
         write_dot(my_dfa, os.path.join(outdir,"problem6_soln{}.dot".format(i)))
     print("{} solutions found for problem6, using BFS symmetry-breaking.".format(len(solutions)))
+    assert len(solutions) == 1
 
-    problem7 = generate_problem(10, 500)
-    solutions = solve_and_check_exhaustively(problem7, symm_mode = symm)
-    for i, my_dfa in enumerate(solutions):
-        write_dot(my_dfa, os.path.join(outdir,"problem7_soln{}.dot".format(i)))
-    print("{} solutions found for problem7, using BFS symmetry-breaking.".format(len(solutions)))
-
+    # problem7 = generate_problem(10, 500)
+    # solutions = solve_and_check_exhaustively(problem7, symm_mode = symm)
+    # for i, my_dfa in enumerate(solutions):
+    #     write_dot(my_dfa, os.path.join(outdir,"problem7_soln{}.dot".format(i)))
+    # print("{} solutions found for problem7, using BFS symmetry-breaking.".format(len(solutions)))
+    # assert len(solutions) == 1
 
 def test_identify_repeatedly():
 
     symm = "bfs"
 
-    for i in range(20):
+    for i in range(10):
         solve_and_check(problem1, symm_mode = symm)
 
-    for i in range(20):
+    for i in range(10):
         solve_and_check(problem3, symm_mode = symm)
 
-    for i in range(20):
+    for i in range(10):
         solve_and_check(problem4, symm_mode = symm)
 
-    for i in range(20):
+    for i in range(10):
         solve_and_check(problem5, symm_mode = symm)
 
 if __name__ == "__main__":
