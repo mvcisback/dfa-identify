@@ -22,18 +22,19 @@ def get_augmented_set(original_dfa: DFA, current_accepting: set,
     Creates sets that are disjoint from the current accepting and rejecting
     '''
     augmented_accepting, augmented_rejecting = set(), set()
+
     def label_wrapper(word):
         if original_dfa.label(word):
-            if word not in current_accepting:
-                augmented_accepting.add(word)
+            if "".join(word) not in current_accepting:
+                augmented_accepting.add("".join(word))
             return True
         else:
-            if word not in current_rejecting:
-                augmented_rejecting.add(word)
+            if "".join(word) not in current_rejecting:
+                augmented_rejecting.add("".join(word))
             return False
+
     def equiv_wrapper(dfa_candidate):
-        #print(dfa_candidate) (debugging)
         return find_equiv_counterexample(dfa_candidate, original_dfa)
     learn_dfa(inputs=original_dfa.inputs, label=label_wrapper,
-              find_counter_example=equiv_wrapper)
+              find_counter_example=equiv_wrapper, outputs=[True, False])
     return augmented_accepting, augmented_rejecting

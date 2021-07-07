@@ -38,6 +38,12 @@ class ParentRelationVar:
     token: int
     true: bool
 
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class ToggleVar:
+    node: int
+    pos_flip: bool
+    true: bool
+
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
 class Codec:
@@ -63,21 +69,30 @@ class Codec:
         c = 1 + self.n_colors * (1 + self.n_nodes)
         return color1 + a * color2 + b * token + c
 
-    def toggle_var(self, node: int) -> int:  # get toggle var literal
-        a = self.n_colors
-        b = a**2
-        c = 1 + self.n_colors * (1 + self.n_nodes)
-        return (1 + node) + self.n_colors + a * self.n_colors + b * self.n_tokens + c
+    def toggle_var(self, node: int, is_pos: bool) -> int:  # get toggle var literal
+        b = self.n_colors**2
+        c = self.n_colors * (self.n_nodes + 1) + b * self.n_tokens
+        addl = self.n_nodes if is_pos else 0
+        return (1 + node) + c + addl
 
     def decode(self, lit: int) -> Var:
         idx = abs(lit) - 1
         color1, true = idx % self.n_colors, lit > 0
         kind_idx = idx // self.n_colors
+        a = self.n_colors
+        b = a**2
         if kind_idx == 0:
             return ColorAcceptingVar(color1, true)
         elif 1 <= kind_idx <= self.n_nodes:
             node = (idx - color1) // self.n_colors - 1
             return ColorNodeVar(color1, true, node)
+        elif idx >= self.n_colors * (self.n_nodes + 1) + \
+                b * self.n_tokens:
+            is_pos = (idx - (self.n_colors * (self.n_nodes + 1) +
+                             b * self.n_tokens)) >= self.n_nodes
+            node_num = (idx - (self.n_colors * (self.n_nodes + 1) +
+                               b * self.n_tokens)) % self.n_nodes
+            return ToggleVar(node_num, is_pos, true)
         tmp = idx - self.n_colors * (1 + self.n_nodes)
         tmp //= self.n_colors
         color2 = tmp % self.n_colors
@@ -107,6 +122,7 @@ def encode_dfa_id(apta, codec, clique, cgraph):
     yield from determination_conflicts(codec, cgraph)          # 8
     yield from symmetry_breaking(codec, clique)
     yield from preference_clauses(codec, apta)
+    yield from min_one_toggle_clauses(codec)
 
 
 def onehot_color_clauses(codec: Codec) -> Clauses:
@@ -164,8 +180,15 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
 def augmented_set_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
-        yield from ([-codec.toggle_var(n), -codec.color_node(n, c), -lit] for n in apta.augmented_original_accepting)
-        yield from ([-codec.toggle_var(n), -codec.color_node(n, c), lit] for n in apta.augmented_original_rejecting)
+        yield from ([-codec.toggle_var(n, is_pos=True), -codec.color_node(n, c), -lit]
+                    for n in apta.augmented_original_accepting)
+        yield from ([-codec.toggle_var(n, is_pos=False), -codec.color_node(n, c), lit]
+                    for n in apta.augmented_original_rejecting)
+
+def min_one_toggle_clauses(codec: Codec) -> Clauses:
+    yield [codec.toggle_var(n, is_pos=True) for n in range(codec.n_toggles)]
+    yield [codec.toggle_var(n, is_pos=False) for n in range(codec.n_toggles)]
+
 
 # couples transitions
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:

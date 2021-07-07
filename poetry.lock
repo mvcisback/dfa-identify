@@ -122,7 +122,7 @@ funcy = ">=1.12,<2.0"
 
 [[package]]
 name = "lstar"
-version = "0.2.10"
+version = "0.2.11"
 description = "Python implementation of lstar automata learning algorithm."
 category = "main"
 optional = false
@@ -421,8 +421,8 @@ lazytree = [
     {file = "lazytree-0.3.3.tar.gz", hash = "sha256:8dd5b1b996157848796521758ad8e1da562a6e6419ceb3ade0d1d2f987a03726"},
 ]
 lstar = [
-    {file = "lstar-0.2.10-py3-none-any.whl", hash = "sha256:96792f9d43f6a97d701eba5c3efc0cc68736ca085467570d4ea9fc39172af146"},
-    {file = "lstar-0.2.10.tar.gz", hash = "sha256:d6986b94473ea4bed76d60278cf6acbb87bf1772803f0b9859ecc7af6941dd4e"},
+    {file = "lstar-0.2.11-py3-none-any.whl", hash = "sha256:f169cfef900d3b922c99aed447085e19630968ea6ba0b8256cd9bf735e10d188"},
+    {file = "lstar-0.2.11.tar.gz", hash = "sha256:fd31f33ccfa8b2787329635f1e8670be73f7df03144efcbc50a49e2a0b59633f"},
 ]
 mako = [
     {file = "Mako-1.1.4-py2.py3-none-any.whl", hash = "sha256:aea166356da44b9b830c8023cd9b557fa856bd8b4035d6de771ca027dfc5cc6e"},

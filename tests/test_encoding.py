@@ -5,6 +5,7 @@ from dfa_identify.encoding import Codec, dfa_id_encodings
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
+    ToggleVar,
     ParentRelationVar
 )
 
@@ -16,15 +17,20 @@ def kind(var):
         return 'color_node'
     elif isinstance(var, ParentRelationVar):
         return 'parent_relation'
+    elif isinstance(var, ToggleVar):
+        return 'toggle_var'
 
 
 def test_codec():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4)
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, n_toggles=10)
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
     assert kind(codec.decode(33)) == 'color_node'
     assert kind(codec.decode(34)) == 'parent_relation'
+    assert kind(codec.decode(70)) == 'toggle_var'
+    assert kind(codec.decode(80)) == 'toggle_var'
+
 
     colors = range(codec.n_colors)
     nodes = range(codec.n_nodes)
@@ -65,6 +71,22 @@ def test_codec():
     assert len(lits) == 9 * 4  # Check bijection.
     assert max(lits) == 3 + 3 * 10 + 9 * 4
 
+    lits = set()
+    for n in nodes:
+        lit_neg = codec.toggle_var(n, False)
+        lit_pos = codec.toggle_var(n, True)
+        lits.add(lit_pos)
+        lits.add(lit_neg)
+        var = codec.decode(lit_pos)
+        assert kind(var) == 'toggle_var'
+        assert var.pos_flip
+        assert var.node == n
+        var = codec.decode(lit_neg)
+        assert kind(var) == 'toggle_var'
+        assert not var.pos_flip
+        assert var.node == n
+
+    assert len(lits) == 2 * 10
 
 def test_encode_dfa_id():
     apta = APTA.from_examples(

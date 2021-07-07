@@ -11,7 +11,8 @@ from dfa_identify.encoding import dfa_id_encodings, Codec
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
-    ParentRelationVar
+    ToggleVar,
+    ParentRelationVar,
 )
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
@@ -51,7 +52,10 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         char = token2char[var.token]
         assert char not in char2node
         char2node[char] = var.node_color
-        
+
+    group4 = next(var_groups)
+    assert group4[0] == ToggleVar
+
     return dict2dfa(dfa_dict, start=node2color[0])
 
 
