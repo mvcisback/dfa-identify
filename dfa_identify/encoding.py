@@ -122,6 +122,7 @@ def encode_dfa_id(apta, codec, clique, cgraph):
     yield from determination_conflicts(codec, cgraph)          # 8
     yield from symmetry_breaking(codec, clique)
     yield from preference_clauses(codec, apta)
+    yield from augmented_set_clauses(codec, apta)
     yield from min_one_toggle_clauses(codec)
 
 
