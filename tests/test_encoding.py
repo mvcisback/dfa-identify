@@ -84,7 +84,7 @@ def test_symm_break():
 
     assert len(p) == 3
     assert len(t) == 3
-    assert len(m) == 8 
+    assert len(m) == 8
 
     for i in range(70, 72):
         assert i in p
