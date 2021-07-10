@@ -86,7 +86,7 @@ class Codec:
             self.n_tokens * self.n_colors * self.n_colors,    # y
             (self.n_colors * (self.n_colors - 1)) // 2,       # p
             (self.n_colors * (self.n_colors - 1)) // 2,       # t
-            self.n_colors * self.n_tokens,                    # m
+            (self.n_colors - 1) * self.n_tokens,              # m
         ))
         object.__setattr__(self, "offsets", tuple([0] + fn.lsums(self.counts)))
 
@@ -130,7 +130,8 @@ class Codec:
     @encoder(offset=5)
     def enumeration_label(self, token: Any, color: int) -> int:
         """ Literature refers to these variables as m """
-        return 1 + self.n_tokens * color + token
+        assert color > 0
+        return 1 + self.n_tokens * (color - 1) + token
 
     # -------------------------------------------------------------------
 
