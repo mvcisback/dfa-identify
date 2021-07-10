@@ -1,6 +1,8 @@
 [tool.poetry]
 name = "dfa_identify"
-version = "1.0.0"
+readme = "README.md"
+repository = "https://github.com/mvcisback/dfa-identify"
+version = "1.0.1"
 description = "Python library for identifying (learning) DFAs (automata) from labeled examples."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 license = "MIT"
