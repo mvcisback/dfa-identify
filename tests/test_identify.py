@@ -54,8 +54,7 @@ def test_unique():
             rejecting=['', 'b', 'aa'],
             sym_mode=sym_mode,
         ))
-        # TODO: should be 1.
-        assert 0 < len(dfas) < 5
+        assert len(dfas) == 1 
 
 
 def test_enumerate():
@@ -65,5 +64,4 @@ def test_enumerate():
             rejecting=['', 'b'],
             sym_mode=sym_mode,
         ))
-        # TODO: should be 4.
-        assert 4 <= len(dfas) < 18
+        assert len(dfas) == 4
