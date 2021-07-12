@@ -1,5 +1,6 @@
 from dfa_identify import find_dfa
 from dfa_identify.distinguish_utils import get_augmented_set
+from dfa import DFA, dict2dfa
 
 def test_identify():
     accepting = ['a', 'abaa', 'bb']
@@ -42,10 +43,16 @@ def test_identify_preferences():
         assert not my_dfa.label(x)
 
 def test_identify_incomparable():
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
+    # accepting = ['a', 'abaa', 'bb']
+    # rejecting = ['abb', 'b']
+    accepting = ['b', 'aa']
+    rejecting = ['a']
 
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+    transition_dict = {1: (True, {'b': 1, 'a': 0}),
+                       0: (False, {'a' : 1, 'b': 0})}
+
+    my_dfa = dict2dfa(transition_dict, 1)
+    #my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
 
     # now, let's try to synthesize an incomparable DFA
     augmented_accepting, augmented_rejecting = get_augmented_set(my_dfa, accepting, rejecting)
