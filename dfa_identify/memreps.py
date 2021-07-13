@@ -52,10 +52,11 @@ def run_memreps_naive(
         rejecting: list[Word],
         max_num_iters: int,
         num_candidates_per_iter: int,
-        num_queries_per_iter: int,
         preference_func,
         membership_func,
         query_scoring_func,
+        query_batch_size: int = 1,
+        strong_memrep: bool = False,
         ordered_preference_words: list[Tuple[Word, Word]] = None,
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
 ) -> Optional[DFA]:
@@ -77,14 +78,14 @@ def run_memreps_naive(
 
         def get_queries(cand_spec, orig_spec):
             cex1 = find_subset_counterexample(cand_spec, orig_spec)  # find subset specs, if any
-            cex2 = find_subset_counterexample(orig_spec, cand_spec)
-            if cex1 is not None and cex2 is not None:  # incomparable case
+            if cex1 is not None:
                 all_queries.append(cex1)
-                all_queries.append(cex2)
-                all_queries.append((cex1, cex2))
-            elif cex1 is not None:
-                all_queries.append(cex1)
-            elif cex2 is not None:
+                cex2 = find_subset_counterexample(orig_spec, cand_spec)
+                if cex2 is not None:
+                    all_queries.append(cex2)
+                    all_queries.append((cex1, cex2))
+            else:
+                cex2 = find_subset_counterexample(orig_spec, cand_spec)
                 all_queries.append(cex2)
 
         while num_candidates_synthesized < num_candidates_per_iter and candidate_spec is not None:
@@ -93,14 +94,25 @@ def run_memreps_naive(
             candidate_spec = next(candidate_spec_gen, None)
         # with the queries accumulated, order them and sample from them
         ordered_query_set = QuerySet.construct_set(all_queries, query_scoring_func)
-        for _ in range(num_queries_per_iter):
+        successful_queries = 0
+        while successful_queries < query_batch_size:
             current_query = ordered_query_set.sample_without_replacement()
             if current_query is None:
                 break
             if type(current_query) == tuple:  # hacky, but tells us if we're in a preference query
-                preference_func(current_query, ordered_preference_words, incomparable_preference_words)
+                response = preference_func(current_query)
+                if response == "incomparable":
+                    if strong_memrep:
+                        successful_queries += 1
+                        incomparable_preference_words.append(current_query)
+                elif response != "unknown":
+                    successful_queries += 1
+                    ordered_preference_words.append(response)
             else:  # we're in a membership query
-                membership_func(current_query, accepting, rejecting)
+                response = membership_func(current_query)
+                if response != "unknown":
+                    successful_queries += 1
+                    accepting.append(current_query) if response else rejecting.append(current_query)
 
         # now, resynthesize a spec that is consistent with the new information
         current_spec = find_dfa(accepting, rejecting, ordered_preference_words,
