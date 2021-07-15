@@ -56,7 +56,7 @@ def run_memreps_naive(
         membership_func,
         query_scoring_func,
         query_batch_size: int = 1,
-        strong_memrep: bool = False,
+        strong_memrep: bool = True,
         ordered_preference_words: list[Tuple[Word, Word]] = None,
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
 ) -> Optional[DFA]:
@@ -120,12 +120,6 @@ def run_memreps_naive(
 
     return current_spec
 
-
-def simple_query_scoring(query):
-    if type(query) == tuple:
-        return 2
-    else:
-        return 1
 
 
 
