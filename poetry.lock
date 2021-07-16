@@ -191,7 +191,7 @@ python-versions = "*"
 
 [[package]]
 name = "networkx"
-version = "2.6.1"
+version = "2.5.1"
 description = "Python package for creating and manipulating graphs and networks"
 category = "main"
 optional = false
@@ -219,7 +219,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "packaging"
-version = "21.0"
+version = "20.9"
 description = "Core utilities for Python packages"
 category = "main"
 optional = false

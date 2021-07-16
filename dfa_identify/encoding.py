@@ -177,7 +177,6 @@ def encode_dfa_id(apta, codec, cgraph, clique=None):
     elif codec.sym_mode == "bfs":
         yield from symmetry_breaking_common(codec)
         yield from symmetry_breaking_bfs(codec)
-    yield from symmetry_breaking(codec, clique)
     yield from preference_clauses(codec, apta)
 
 
