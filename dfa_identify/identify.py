@@ -117,11 +117,9 @@ def find_different_dfas(
         rejecting: list[Word],
         ordered_preference_words: list[Tuple[Word, Word]] = None,
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
-        solver_fact=Glucose4,
-        sym_mode: SymMode = "clique",
 ) -> Optional[DFA]:
-    candidate_dfa_gen = find_dfas(accepting, rejecting, ordered_preference_words, incomparable_preference_words,
-                          solver_fact, sym_mode)
+    candidate_dfa_gen = find_dfas(accepting, rejecting, ordered_preference_words,
+                                  incomparable_preference_words)
     for candidate_dfa in candidate_dfa_gen:
         if find_equiv_counterexample(candidate_dfa, original_dfa) is not None:
             yield candidate_dfa
