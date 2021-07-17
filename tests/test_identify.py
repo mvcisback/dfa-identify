@@ -65,6 +65,17 @@ def test_enumerate():
         ))
         assert len(dfas) == 4
 
+def test_enumerate_preferences():
+    for sym_mode in ['bfs', 'clique']:
+        dfas = list(find_dfas(
+            accepting=['a'],
+            rejecting=['', 'b'],
+            ordered_preference_words=[("ab", "aa")],
+            incomparable_preference_words=[("baa", "aaa")],
+            sym_mode=sym_mode,
+        ))
+        assert len(dfas) == 2
+
 def test_identify_preferences():
     accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']

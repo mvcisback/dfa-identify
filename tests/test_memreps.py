@@ -27,7 +27,6 @@ def test_memreps_naive():
 
     def membership_fxn(word):
         trace1 = test_system1.trace(word)
-        #breakpoint()
         tcount = 0
         for state in trace1:
             if state == 0:
@@ -46,7 +45,6 @@ def test_memreps_naive():
 
     resulting_dfa = run_memreps_naive(accepting, rejecting, 100, 30,
                                       pref_fxn, membership_fxn, simple_query_scoring)
-    breakpoint()
 
     aug_accept = ['b', 'aa', 'a', 'ab', 'bbb', 'baab', 'bab']
     aug_reject = ['aaaaa', 'abb', 'bbabb', 'aaab', 'bbbaaaaaaa']
