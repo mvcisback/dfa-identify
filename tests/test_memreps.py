@@ -91,6 +91,6 @@ def test_equivalence_memreps():
     rejecting = ['aaaaa', 'abb']
 
     resulting_dfa = equivalence_oracle_memreps(equivalence_fxn, accepting, rejecting,
-                                               100, 30, pref_fxn, membership_fxn,
+                                               100, 5, pref_fxn, membership_fxn,
                                                simple_query_scoring, num_equiv_iters=20)
     assert find_equiv_counterexample(true_dfa, resulting_dfa) is None

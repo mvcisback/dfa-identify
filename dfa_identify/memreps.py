@@ -3,7 +3,7 @@ from itertools import groupby
 import attr
 import numpy as np
 from scipy.special import softmax
-from typing import Any, Optional, Tuple, Callable
+from typing import Any, Optional, Tuple, Callable, List
 from copy import copy
 from dfa import DFA
 from dfa.utils import find_equiv_counterexample, find_subset_counterexample
@@ -12,9 +12,10 @@ from dfa_identify.graphs import Word, APTA
 from dfa_identify.identify import find_dfa, find_dfas, find_different_dfas
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
 
+
 @attr.s(auto_detect=True, auto_attribs=True)
 class QuerySet:
-    all_queries: np.array
+    all_queries: List
     query_scores: np.array
     query_probabilities: np.array
 
@@ -55,13 +56,13 @@ symmetry breaking mode have been included, as well as parameters for
 initial accepting, rejecting, and preference sets.
 '''
 def run_memreps_with_data(
-        accepting: list[Word],
-        rejecting: list[Word],
+        accepting: List[Word],
+        rejecting: List[Word],
         max_num_iters: int,
         num_candidates_per_iter: int,
-        preference_func,
-        membership_func,
-        query_scoring_func,
+        preference_func: Callable[[Word, Word], Any],
+        membership_func: Callable[[Word], Any],
+        query_scoring_func: Callable[[Word], Any],
         query_batch_size: int = 1,
         strong_memrep: bool = True,
         ordered_preference_words: list[Tuple[Word, Word]] = None,
@@ -76,14 +77,13 @@ def run_memreps_with_data(
     # first, find a starter spec consistent with the initial data
     current_spec = find_dfa(accepting, rejecting, ordered_preference_words,
                             incomparable_preference_words, sym_mode=sym_mode)
-    itr = 0
 
-
-    while itr < max_num_iters:  # outer loop
+    for _ in range(max_num_iters):  # outer loop
         all_queries = set([])
         # find k different specs from the current. If none exist, we have a unique spec
-        candidate_spec_gen = find_different_dfas(current_spec, accepting, rejecting, ordered_preference_words,
-                           incomparable_preference_words, sym_mode=sym_mode)
+        candidate_spec_gen = find_different_dfas(current_spec, accepting, rejecting,
+                                                 ordered_preference_words,
+                                                 incomparable_preference_words, sym_mode=sym_mode)
         candidate_spec = next(candidate_spec_gen, None)
         if candidate_spec is None:
             # no other minimal DFAs are consistent with this spec
@@ -113,13 +113,11 @@ def run_memreps_with_data(
         successful_queries = 0
         while successful_queries < query_batch_size:
             query = ordered_query_set.sample_without_replacement()
-            #breakpoint()
             if query is None:
                 break
             query_type, current_query = query
             if query_type == "preference":  # tagged earlier
                 word1, word2 = current_query
-                #breakpoint()
                 response = preference_func(word1, word2)
                 if response == "incomparable":
                     if strong_memrep:
@@ -133,11 +131,10 @@ def run_memreps_with_data(
                 if response != "unknown":
                     successful_queries += 1
                     accepting.append(current_query) if response else rejecting.append(current_query)
-            #breakpoint()
         # now, resynthesize a spec that is consistent with the new information
         current_spec = find_dfa(accepting, rejecting, ordered_preference_words,
                                 incomparable_preference_words, sym_mode=sym_mode)
-        itr += 1
+    print("Elapsed maximum number of iterations. Returning current consistent specification.")
     return current_spec, (accepting, rejecting, ordered_preference_words, incomparable_preference_words)
 
 
