@@ -1,21 +1,17 @@
 # dfa-identify
-Python library for identifying (learning) DFAs from labeled examples
+Python library for identifying (learning) minimal DFAs from labeled examples
 by reduction to SAT.
-
 
 [![Build Status](https://cloud.drone.io/api/badges/mvcisback/dfa-identify/status.svg)](https://cloud.drone.io/mvcisback/dfa-identify)
 [![PyPI version](https://badge.fury.io/py/dfa_identify.svg)](https://badge.fury.io/py/dfa_identify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
 - [Installation](#installation)
 - [Usage](#usage)
 - [Encoding](#encoding)
-
-<!-- markdown-toc end -->
-
+- [Goals and related libraries](#goals-and-related-libraries)
 
 # Installation
 
@@ -77,3 +73,14 @@ The key difference is in the use of the symmetry breaking clauses. Two kinds are
 1. clique (Heule 2010): Partially breaks symmetries by analyzing
    conflict graph.
 2. bfs (Ulyantsev 2016): Breaks all symmetries so that each model corresponds to a unique DFA.
+
+# Goals and related libraries
+
+There are many other python libraries that 
+perform DFA and other automata inference.
+
+1. [DFA-Inductor-py](https://github.com/ctlab/DFA-Inductor-py) - State of the art passive inference via reduction to SAT (as of 2019).
+2. [z3gi](https://gitlab.science.ru.nl/rick/z3gi): Uses SMT backed passive learning algorithm.
+3. [lstar](https://pypi.org/project/lstar/): Active learning algorithm based L* derivative.
+
+The primary goal of this library is to loosely track the state of the art in passive SAT based inference while providing a simple implementation and API.
