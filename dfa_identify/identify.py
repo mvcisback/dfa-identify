@@ -57,6 +57,7 @@ def find_dfas(
         rejecting: list[Word],
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
+        start_n: int = 1
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -72,7 +73,7 @@ def find_dfas(
       An iterable of all minimal DFA consistent with accepting and rejecting.
     """
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
-    for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode):
+    for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode, start_n=start_n):
         with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)
@@ -90,6 +91,7 @@ def find_dfa(
         rejecting: list[Word],
         solver_fact=Glucose4,
         sym_mode: SymMode = "clique",
+        start_n: int = 1
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -102,7 +104,7 @@ def find_dfa(
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
-    return next(find_dfas(accepting, rejecting, solver_fact, sym_mode), None)
+    return next(find_dfas(accepting, rejecting, solver_fact, sym_mode, start_n=start_n), None)
 
 
 __all__ = ['find_dfas', 'find_dfa', 'extract_dfa']
