@@ -3,7 +3,8 @@ from itertools import groupby
 import attr
 import numpy as np
 from scipy.special import softmax
-from typing import Any, Optional, Tuple, Callable, List
+from scipy.stats import entropy
+from typing import Any, Optional, Tuple, Callable, List, Dict
 from copy import copy
 from dfa import DFA
 from dfa.utils import find_equiv_counterexample, find_subset_counterexample
@@ -15,38 +16,81 @@ from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
 
 @attr.s(auto_detect=True, auto_attribs=True)
 class QuerySet:
-    all_queries: List
-    query_scores: np.array
-    query_probabilities: np.array
+    membership_queries: List
+    preference_queries: List
+    info_scores: Dict
+    user_scores: Dict
+    scoring_weight: float
+    all_queries: List = []
+    query_probabilities: np.array = []
 
     @staticmethod
-    def construct_set(all_queries, scoring_function):
-        all_queries = list(all_queries)
-        query_scores = np.zeros(len(all_queries))
-        for query_idx in range(len(all_queries)):
-            query_scores[query_idx] = scoring_function(all_queries[query_idx])
-        qset = QuerySet(all_queries, query_scores, [])
+    def construct_set(membership_queries, preference_queries,
+                      scoring_function, scoring_weight, candidate_specs):
+        info_scores = {"membership": [], "preference": []}
+        user_scores = {"membership": [], "preference": []}
+        for label, queries in [("membership", membership_queries), ("preference", preference_queries)]:
+            for query in queries:
+                info_scores[label].append(evaluate_query_information(query, label, candidate_specs))
+                user_scores[label].append(scoring_function(query, label))
+        qset = QuerySet(membership_queries, preference_queries, info_scores, user_scores, scoring_weight)
         qset.renormalize()
         return qset
 
     def sample_without_replacement(self):
-        if len(self.all_queries) == 0:
+        if len(self.membership_queries) + len(self.preference_queries) == 0:
             return None
         selected_idx = np.random.choice(len(self.all_queries), 1, p=self.query_probabilities).item()
         item = copy(self.all_queries[selected_idx])
-        self.remove_item(selected_idx)
-        return item
+        if selected_idx >= len(self.membership_queries):
+            label = "preference"
+            remove_idx = selected_idx - len(self.membership_queries)
+        else:
+            label = "membership"
+            remove_idx = selected_idx - 1
+        self.remove_item(label, remove_idx)
+        return label, item
 
-    def remove_item(self, idx):
-        self.all_queries.pop(idx)
-        self.query_scores = np.delete(self.query_scores, idx)
-        if len(self.query_scores) > 0:
+    def remove_item(self, label, idx):
+        self.info_scores[label].pop(idx)
+        self.user_scores[label].pop(idx)
+        if label == "membership":
+            self.membership_queries.pop(idx)
+        else:
+            self.preference_queries.pop(idx)
+        if len(self.membership_queries) + len(self.preference_queries) > 0:
             self.renormalize()
 
     def renormalize(self):
+        user_normalized = normalize(self.user_scores["membership"] + self.user_scores["preference"])
+        info_normalized = np.concatenate((normalize(self.info_scores["membership"]),
+                                             normalize(self.info_scores["preference"])))
+        self.all_queries = self.membership_queries + self.preference_queries
         #  use softmax to compute probabilities
-        self.query_probabilities = softmax(self.query_scores)
+        self.query_probabilities = softmax(self.scoring_weight * user_normalized +
+                                           (1-self.scoring_weight) * info_normalized)
 
+def normalize(values):
+    return np.array(values) / np.sum(values)
+
+'''
+Determine the entropy of a query based on responses from a set of candidates.
+'''
+def evaluate_query_information(query, label, candidate_specs):
+    if label == "preference":
+        counts = {(True, True): 0,
+                  (True, False): 0,
+                  (False, True): 0,
+                  (False, False): 0}
+        word1, word2 = query
+        for candidate in candidate_specs:
+            counts[(candidate.label(word1), candidate.label(word2))] += 1
+        return entropy(list(counts.values()))
+    else:  # we're in the membership case
+        counts = {True: 0, False: 0}
+        for candidate in candidate_specs:
+            counts[candidate.label(query)] += 1
+        return entropy(list(counts.values()))
 
 '''
 Main implementation of the MemRePs algorithm.
@@ -63,6 +107,7 @@ def run_memreps_with_data(
         preference_func: Callable[[Word, Word], Any],
         membership_func: Callable[[Word], Any],
         query_scoring_func: Callable[[Word], Any],
+        query_scoring_weight: float = 0.5,
         query_batch_size: int = 1,
         strong_memrep: bool = True,
         ordered_preference_words: list[Tuple[Word, Word]] = None,
@@ -79,7 +124,8 @@ def run_memreps_with_data(
                             incomparable_preference_words, sym_mode=sym_mode)
 
     for _ in range(max_num_iters):  # outer loop
-        all_queries = set([])
+        preference_queries = set([])
+        membership_queries = set([])
         # find k different specs from the current. If none exist, we have a unique spec
         candidate_spec_gen = find_different_dfas(current_spec, accepting, rejecting,
                                                  ordered_preference_words,
@@ -91,25 +137,28 @@ def run_memreps_with_data(
                                   ordered_preference_words,
                                   incomparable_preference_words)
         num_candidates_synthesized = 0
-
+        all_candidate_specs = [current_spec]
         def get_queries(cand_spec, orig_spec):
             cex1 = find_subset_counterexample(cand_spec, orig_spec)  # find subset specs, if any
             if cex1 is not None:
-                all_queries.add(("membership", cex1))
+                membership_queries.add(cex1)
                 cex2 = find_subset_counterexample(orig_spec, cand_spec)
                 if cex2 is not None:
-                    all_queries.add(("membership", cex2))
-                    all_queries.add(("preference", (cex1, cex2)))
+                    membership_queries.add(cex2)
+                    preference_queries.add((cex1, cex2))
             else:
                 cex2 = find_subset_counterexample(orig_spec, cand_spec)
-                all_queries.add(("membership", cex2))
+                membership_queries.add(cex2)
 
         while num_candidates_synthesized < num_candidates_per_iter and candidate_spec is not None:
+            all_candidate_specs.append(candidate_spec)
             get_queries(candidate_spec, current_spec)
             num_candidates_synthesized += 1
             candidate_spec = next(candidate_spec_gen, None)
         # with the queries accumulated, order them and sample from them
-        ordered_query_set = QuerySet.construct_set(all_queries, query_scoring_func)
+        ordered_query_set = QuerySet.construct_set(list(membership_queries),
+                                                   list(preference_queries), query_scoring_func,
+                                                   query_scoring_weight, all_candidate_specs)
         successful_queries = 0
         while successful_queries < query_batch_size:
             query = ordered_query_set.sample_without_replacement()
@@ -208,9 +257,6 @@ def run_memreps_naive(
                                                 incomparable_preference_words=incomparable_preference_words,
                                                 sym_mode=sym_mode)
     return candidate_dfa
-
-
-
 
 
 

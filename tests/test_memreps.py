@@ -34,9 +34,8 @@ def test_memreps_naive():
                 tcount += 1
         return tcount < 3
 
-    def simple_query_scoring(query):
-        qtype, query_info = query
-        if qtype == "preference":
+    def simple_query_scoring(query, label):
+        if label == "preference":
             return 2
         else:
             return 1
@@ -77,9 +76,8 @@ def test_equivalence_memreps():
     def membership_fxn(word):
         return true_dfa.label(word)
 
-    def simple_query_scoring(query):
-        qtype, query_info = query
-        if qtype == "preference":
+    def simple_query_scoring(query, label):
+        if label == "preference":
             return 2
         else:
             return 1
