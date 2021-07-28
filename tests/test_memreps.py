@@ -1,7 +1,8 @@
 from dfa_identify import find_dfa, find_dfas
-from dfa_identify.memreps import run_memreps_naive, equivalence_oracle_memreps
+from dfa_identify.memreps import run_memreps_naive, equivalence_oracle_memreps, pac_memreps
 from dfa.utils import find_equiv_counterexample, find_subset_counterexample
 from dfa import dict2dfa
+import numpy as np
 
 def test_memreps_naive():
     transition_dict = {1: (True, {'b': 1, 'a': 0}),
@@ -92,3 +93,57 @@ def test_equivalence_memreps():
                                                100, 5, pref_fxn, membership_fxn,
                                                simple_query_scoring, num_equiv_iters=20)
     assert find_equiv_counterexample(true_dfa, resulting_dfa) is None
+
+def test_pac_memreps():
+    transition_dict = {0: (True, {'a': 1, 'b': 0}),
+                       1: (True, {'a' : 4, 'b': 2}),
+                       2: (True, {'a' : 5, 'b': 3}),
+                       3: (False, {'a' : 3, 'b': 3}),
+                       4: (True, {'a' : 2, 'b': 4}),
+                       5: (True, {'a' : 3, 'b': 5})}
+
+    true_dfa = dict2dfa(transition_dict, 0)
+    alphabet = ["a", "b"]
+    def pref_fxn(word1, word2):
+        if true_dfa.label(word1) == true_dfa.label(word2):
+            return "incomparable"
+        elif true_dfa.label(word1):
+            return word2, word1
+        else:
+            return word1, word2
+
+    def membership_fxn(word):
+        return true_dfa.label(word)
+
+    def simple_query_scoring(query, label):
+        if label == "preference":
+            return 2
+        else:
+            return 1
+
+    def sampling_fxn(candidate):
+        length = np.random.choice(15)
+        word = ""
+        for _ in range(length):
+            word += np.random.choice(alphabet)
+        if true_dfa.label(word) != candidate.label(word):
+            return word
+        return None
+
+    accepting = ['b', 'aa', 'a']
+    rejecting = ['aaaaa', 'abb']
+    epsilon = 0.05
+    delta = 0.1
+    resulting_dfa = pac_memreps(epsilon, delta,
+                                sampling_fxn,
+                                accepting, rejecting,
+                                100, 5, pref_fxn, membership_fxn,
+                                simple_query_scoring, max_pac_iters=20)
+    num_errors = 0.0
+    num_total = 600
+    for _ in range(num_total):
+        cex = sampling_fxn(resulting_dfa)
+        if cex is not None:
+            num_errors += 1.0
+    # this should happen with .9999 probability
+    assert 1 - (num_errors / num_total) >= .90

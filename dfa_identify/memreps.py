@@ -1,4 +1,5 @@
 import random
+import math
 from itertools import groupby
 import attr
 import numpy as np
@@ -231,6 +232,50 @@ def equivalence_oracle_memreps(
     print("Maximum allotted iterations have elapsed without finding equivalent DFA.")
     return None
 
+def pac_memreps(
+        epsilon: float,
+        delta: float,
+        sampling_func: Callable[[DFA], Optional[Word]],
+        accepting: list[Word],
+        rejecting: list[Word],
+        max_num_iters: int,
+        num_candidates_per_iter: int,
+        preference_func: Callable[[Word, Word], Any],
+        membership_func: Callable[[Word], Any],
+        query_scoring_func,
+        query_batch_size: int = 1,
+        strong_memrep: bool = True,
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        incomparable_preference_words: list[Tuple[Word, Word]] = None,
+        sym_mode: SymMode = "clique",
+        max_pac_iters: int = 10
+) -> Optional[DFA]:
+    for itr in range(max_pac_iters):  # max number of equivalence checks
+        candidate_dfa = run_memreps_naive(accepting, rejecting, max_num_iters,
+                                          num_candidates_per_iter, preference_func,
+                                          membership_func, query_scoring_func,
+                                          query_batch_size=query_batch_size, strong_memrep=strong_memrep,
+                                          ordered_preference_words=ordered_preference_words,
+                                          incomparable_preference_words=incomparable_preference_words,
+                                          sym_mode=sym_mode)
+        if candidate_dfa is None:
+            print("Error: no DFA available that is consistent with data.")
+            return None
+        # compute N in order to perform the PAC check on the candidate DFA
+        num_samples = int(np.log(delta / 2) / (-1 * 2 * epsilon ** 2))
+        counterexample = None
+        for i in range(num_samples):
+            counterexample = sampling_func(candidate_dfa)
+            if counterexample is not None:  # we are violating the pac guarantee
+                rejecting.append(counterexample) if candidate_dfa.label(counterexample) \
+                    else accepting.append(counterexample)
+                break
+        if counterexample is None:  # we got through all of the samples without breaking
+            return candidate_dfa
+    # we weren't able to find an equivalent DFA in the number of iterations allowed
+    print("Maximum allotted iterations have elapsed without finding pac DFA.")
+    return None
+
 
 '''
 MemRePs wrapper that returns only the DFA, and not the augmented datasets.
@@ -257,7 +302,6 @@ def run_memreps_naive(
                                                 incomparable_preference_words=incomparable_preference_words,
                                                 sym_mode=sym_mode)
     return candidate_dfa
-
 
 
 
