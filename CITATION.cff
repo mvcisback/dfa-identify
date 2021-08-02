@@ -1,0 +1,18 @@
+# YAML 1.2
+---
+authors: 
+  -
+    family-names: "Vazquez-Chanlatte"
+    given-names: Marcell
+    orcid: "https://orcid.org/0000-0002-1248-0000"
+  -
+    family-names: Ameesh
+    given-names: Shah
+  -
+    family-names: Vint
+    given-names: Lee
+cff-version: "1.1.0"
+license: MIT
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/mvcisback/dfa-identify"
+...
