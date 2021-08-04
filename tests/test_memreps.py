@@ -44,8 +44,8 @@ def test_memreps_naive():
     accepting = ['b', 'aa', 'a', 'baab', 'bab', 'bb']
     rejecting = ['aaaaa', 'abb', 'bbabb', 'aaab']
 
-    resulting_dfa = run_memreps_naive(accepting, rejecting, 100, 30,
-                                      pref_fxn, membership_fxn, simple_query_scoring)
+    resulting_dfa = run_memreps_naive(accepting, rejecting, 100,
+                                      pref_fxn, membership_fxn)
 
     aug_accept = ['b', 'aa', 'a', 'ab', 'bbb', 'baab', 'bab']
     aug_reject = ['aaaaa', 'abb', 'bbabb', 'aaab', 'bbbaaaaaaa']
@@ -90,8 +90,8 @@ def test_equivalence_memreps():
     rejecting = ['aaaaa', 'abb']
 
     resulting_dfa = equivalence_oracle_memreps(equivalence_fxn, accepting, rejecting,
-                                               100, 5, pref_fxn, membership_fxn,
-                                               simple_query_scoring, num_equiv_iters=20)
+                                               100, pref_fxn, membership_fxn,
+                                               num_equiv_iters=20)
     assert find_equiv_counterexample(true_dfa, resulting_dfa) is None
 
 def test_pac_memreps():
@@ -137,8 +137,8 @@ def test_pac_memreps():
     resulting_dfa = pac_memreps(epsilon, delta,
                                 sampling_fxn,
                                 accepting, rejecting,
-                                100, 5, pref_fxn, membership_fxn,
-                                simple_query_scoring, max_pac_iters=20)
+                                100, pref_fxn, membership_fxn,
+                                max_pac_iters=20)
     num_errors = 0.0
     num_total = 600
     for _ in range(num_total):
