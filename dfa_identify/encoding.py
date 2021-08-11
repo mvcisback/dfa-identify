@@ -161,13 +161,20 @@ ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
 def dfa_id_encodings(
         apta: APTA,
         sym_mode: SymMode = None,
-        extra_clauses: ExtraClauseGenerator = lambda *_: (),) -> Encodings:
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),
+        start_n: int = 1,
+        ) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
-
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
 
-    for n_colors in range(len(clique), len(apta.nodes) + 1):
+    if start_n > len(apta.nodes):
+        raise ValueError(
+            "start_n is too high for amount of observations supplied,"
+            "minimal DFA will not be found"
+        )
+
+    for n_colors in range(max(start_n, len(clique)), len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
 
         clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
