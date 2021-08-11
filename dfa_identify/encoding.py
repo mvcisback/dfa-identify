@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from itertools import product
 from functools import wraps
-from typing import Any, Iterable, Literal, Optional, Union
+from typing import Any, Callable, Iterable, Literal, Optional, Union
 
 import attr
 import funcy as fn
@@ -155,14 +155,25 @@ class Codec:
 
 # ================= Clause Generator =====================
 
+ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
 
-def dfa_id_encodings(apta: APTA, sym_mode: SymMode = None) -> Encodings:
+
+def dfa_id_encodings(
+        apta: APTA,
+        sym_mode: SymMode = None,
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),) -> Encodings:
+    """Iterator of codecs and clauses for DFAs of increasing size."""
+
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
 
     for n_colors in range(len(clique), len(apta.nodes) + 1):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
-        yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
+
+        clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
+        clauses.extend(list(extra_clauses(apta, codec)))
+
+        yield codec, clauses
 
 
 def encode_dfa_id(apta, codec, cgraph, clique=None):

@@ -6,6 +6,7 @@ from pysat.solvers import Glucose4
 
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
+from dfa_identify.encoding import ExtraClauseGenerator
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -57,6 +58,7 @@ def find_dfas(
         rejecting: list[Word],
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -89,7 +91,8 @@ def find_dfa(
         accepting: list[Word],
         rejecting: list[Word],
         solver_fact=Glucose4,
-        sym_mode: SymMode = "clique",
+        sym_mode: SymMode = "bfs",
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
