@@ -69,9 +69,10 @@ class APTA:
         if incomparable_preference_words is None:
             incomparable_preference_words = []
         # Create prefix tree.
-        tree, root = nx.prefix_tree(chain(accepting, rejecting, list(chain(*ordered_preference_words)),
-                                          list(chain(*incomparable_preference_words))))
-        tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
+        tree = nx.prefix_tree(chain(accepting, rejecting, list(chain(*ordered_preference_words)),
+                                    list(chain(*incomparable_preference_words))))
+        root, NIL = 0, -1
+        tree.remove_node(NIL)  # <-- sink node added by nx.
 
         # Label nodes with integers. With root = 0.
         relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
