@@ -156,13 +156,16 @@ class Codec:
 # ================= Clause Generator =====================
 
 
-def dfa_id_encodings(apta: APTA, sym_mode: SymMode = None) -> Encodings:
+def dfa_id_encodings(apta: APTA, sym_mode: SymMode = None, start_n: int = 1) -> Encodings:
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
 
     for n_colors in range(len(clique), len(apta.nodes) + 1):
-        codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
-        yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
+        assert start_n <= len(apta.nodes), \
+            "start_n is too high for amount of observations supplied, minimal DFA will not be found"
+        for n_colors in range(max(start_n, len(clique)), len(apta.nodes) + 1):
+            codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
+            yield codec, list(encode_dfa_id(apta, codec, cgraph, clique))
 
 
 def encode_dfa_id(apta, codec, cgraph, clique=None):

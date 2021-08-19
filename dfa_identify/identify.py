@@ -58,6 +58,7 @@ def find_dfas(
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
+        start_n: int = 1
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -74,7 +75,7 @@ def find_dfas(
     """
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
                               incomparable_preference_words=incomparable_preference_words)
-    for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode):
+    for codec, clauses in dfa_id_encodings(apta, sym_mode=sym_mode, start_n=start_n):
         with solver_fact() as solver:
             for clause in clauses:
                 solver.add_clause(clause)
@@ -94,6 +95,7 @@ def find_dfa(
         incomparable_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "clique",
+        start_n: int = 1
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -107,7 +109,7 @@ def find_dfa(
       indicating that no DFA exists.
     """
     return next(find_dfas(accepting, rejecting, ordered_preference_words, incomparable_preference_words,
-                          solver_fact, sym_mode), None)
+                          solver_fact, sym_mode, start_n=start_n), None)
 
 
 
