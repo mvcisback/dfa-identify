@@ -49,8 +49,8 @@ class APTA:
     def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
         """Return Augmented Prefix Tree Automata for accepting, rejecting."""
         # Create prefix tree.
-        tree, root = nx.prefix_tree(chain(accepting, rejecting))
-        tree.remove_node(nx.generators.trees.NIL)  # <-- sink node added by nx.
+        tree, root = nx.prefix_tree(chain(accepting, rejecting)), 0
+        tree.remove_node(-1)  # <-- sink node added by nx.
 
         def access(word: Word) -> Node:
             node = root
