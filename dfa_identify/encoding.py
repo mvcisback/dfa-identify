@@ -155,6 +155,7 @@ class Codec:
 
 # ================= Clause Generator =====================
 
+Bounds = tuple[Optional[int], Optional[int]]
 ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
 
 
@@ -162,19 +163,31 @@ def dfa_id_encodings(
         apta: APTA,
         sym_mode: SymMode = None,
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        start_n: int = 1,
+        bounds: Bounds = (None, None)
         ) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
+    max_needed = len(apta.nodes)
 
-    if start_n > len(apta.nodes):
-        raise ValueError(
-            "start_n is too high for amount of observations supplied,"
-            "minimal DFA will not be found"
-        )
+    low, high = bounds
 
-    for n_colors in range(max(start_n, len(clique)), len(apta.nodes) + 1):
+    # Tighten lower bound.
+    if low is None:
+        low = 1
+    low = max(low, len(clique))
+
+    if (low > max_needed) and ((high is None) or (low < high)):
+        high = low  # Will find something at low if one exists.
+    elif high is None:
+        high = max_needed
+    else:
+        high = min(high, max_needed)
+
+    if high < low:
+        raise ValueError('Empty bound range!')
+
+    for n_colors in range(low, high + 1):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
 
         clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
@@ -324,4 +337,4 @@ def symmetry_breaking_bfs(codec: Codec) -> Clauses:
                     ]  # 15
 
 
-__all__ = ['Codec', 'dfa_id_encodings']
+__all__ = ['Codec', 'dfa_id_encodings', 'Bounds', 'ExtraClauseGenerator']

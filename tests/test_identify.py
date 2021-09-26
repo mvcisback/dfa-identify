@@ -18,7 +18,7 @@ def test_identify():
     accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
     rejecting = [[0, 'z', 'z'], ['z']]
 
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, start_n=3)
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, bounds=(3, 10))
 
     for x in accepting:
         assert my_dfa.label(x)

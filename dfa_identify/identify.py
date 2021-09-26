@@ -6,7 +6,7 @@ from pysat.solvers import Glucose4
 
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
-from dfa_identify.encoding import ExtraClauseGenerator
+from dfa_identify.encoding import Bounds, ExtraClauseGenerator
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -59,7 +59,7 @@ def find_dfas(
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        start_n: int = 1
+        bounds: Bounds = (None, None),
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -70,6 +70,14 @@ def find_dfas(
       - accepting: A sequence of "words" to be accepted.
       - rejecting: A sequence of "words" to be rejected.
       - solver: A py-sat API compatible object for solving CNF SAT queries.
+      - bounds: DFA size range (inclusive) to restrict search to, e.g.,
+                - (None, 10): DFA can have as most 10 states.
+                - (2, None): DFA must have at least 2 states.
+                - (2, 10):  DFA must have between 2 and 10 states.
+                - (None, None): No constraints (default).
+      - sym_mode: Which symmetry breaking strategy to employ.
+      - extra_clauses: Optional user defined additional clauses to add
+          for a given codec (encoding of size k DFA).
 
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
@@ -77,7 +85,7 @@ def find_dfas(
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
-        extra_clauses=extra_clauses, start_n=start_n)
+        extra_clauses=extra_clauses, bounds=bounds)
 
     for codec, clauses in encodings:
         with solver_fact() as solver:
@@ -98,7 +106,7 @@ def find_dfa(
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        start_n: int = 1
+        bounds: Bounds = (None, None),
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -106,13 +114,21 @@ def find_dfa(
       - accepting: A sequence of "words" to be accepted.
       - rejecting: A sequence of "words" to be rejected.
       - solver: A py-sat API compatible object for solving CNF SAT queries.
+      - bounds: DFA size range (inclusive) to restrict search to, e.g.,
+                - (None, 10): DFA can have as most 10 states.
+                - (2, None): DFA must have at least 2 states.
+                - (2, 10):  DFA must have between 2 and 10 states.
+                - (None, None): No constraints (default).
+      - sym_mode: Which symmetry breaking strategy to employ.
+      - extra_clauses: Optional user defined additional clauses to add
+          for a given codec (encoding of size k DFA).
 
     Returns:
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
     all_dfas = find_dfas(
-        accepting, rejecting, solver_fact, sym_mode, extra_clauses, start_n
+        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds
     )
     return next(all_dfas, None)
 
