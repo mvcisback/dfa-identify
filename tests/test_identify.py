@@ -65,3 +65,10 @@ def test_enumerate():
             sym_mode=sym_mode,
         ))
         assert len(dfas) == 4
+
+
+def test_overlapping_examples():
+    pos = [[False, True]]
+    neg = [[False], [False, True]]
+    my_dfa = find_dfa(accepting=pos, rejecting=neg)
+    assert my_dfa is None

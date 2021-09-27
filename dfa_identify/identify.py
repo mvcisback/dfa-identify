@@ -82,6 +82,13 @@ def find_dfas(
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
     """
+    # Convert to hashable words.
+    accepting = list(map(tuple, accepting))
+    rejecting = list(map(tuple, rejecting))
+
+    if set(accepting) & set(rejecting):
+        return
+
     apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
