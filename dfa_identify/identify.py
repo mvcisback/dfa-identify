@@ -8,33 +8,61 @@ from pysat.card import CardEnc
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode, Encodings
 from dfa_identify.encoding import Bounds, ExtraClauseGenerator
-from dfa_identify.encoding import at_most_k_edges_clause
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
     ParentRelationVar
 )
 
-def find_edge_count_constraints(
+
+def max_stuttering_dfas(
+        solver_fact,
         codec: Codec,
-        apta: APTA,
-        solver
-) -> int:
-    # calculate the maximum number of edges
-    top_lit, upper_bound, lits = at_most_k_edges_clause(codec, apta)
-    lower_bound = codec.n_nodes - 1
+        clauses: list[list[int]],
+        model: list[int],
+) -> Iterable[DFA]:
+    # Compute parent relation variables that don't stutter.
+    lits = []
+    for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
+        par_rel = codec.decode(lit)
+        assert isinstance(par_rel, ParentRelationVar)
+        if par_rel.node_color == par_rel.parent_color:
+            continue
+        lits.append(lit)
 
-    # now, binary search using cardinality constraints
-    while lower_bound < upper_bound:
-        current_bound = int((lower_bound + upper_bound) / 2)
-        card_constraints = CardEnc.atmost(lits=lits, bound=current_bound, top_id=top_lit)
+    top_id = codec.offsets[-1]
 
-        curr_result = solver.solve(assumptions=card_constraints)
-        if curr_result:
-            upper_bound = current_bound
+    def find_models(bound: int):
+        with solver_fact(bootstrap_with=clauses) as solver:
+            if solver.supports_at_most():
+                solver.add_atmost(lits, bound)
+            else:
+                solver.add_formula(
+                    CardEnc.atmost(lits=lits, bound=bound, top_id=top_id)
+                )
+            if not solver.solve():
+                return
+            yield from solver.enum_models()
+
+    def non_stutter_count(model) -> int:
+        return sum(model[x] > 0 for x in lits)
+
+    hi = non_stutter_count(model)
+    lo = codec.n_nodes - 1
+
+    # Binary search using cardinality constraints
+    while lo < hi:
+        mid = (lo + hi) //  2
+        models = find_models(mid) 
+        model = next(models, None)
+        if model is not None:
+            hi = non_stutter_count(model)
+            assert hi <= mid
         else:
-            lower_bound = current_bound
-    return CardEnc.atmost(lits=lits, bound=lower_bound, top_id=top_lit)
+            lo = mid
+    yield model           # First model used.
+    yield from models
+
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
@@ -110,19 +138,20 @@ def find_dfas(
         extra_clauses=extra_clauses, bounds=bounds)
 
     for codec, clauses in encodings:
-        with solver_fact() as solver:
-            for clause in clauses:
-                solver.add_clause(clause)
-
+        with solver_fact(bootstrap_with=clauses) as solver:
             if not solver.solve():
                 continue
-            if minimum_ns_edges:
-                card_constraints = find_edge_count_constraints(codec, apta, solver)
-                models = solver.enum_models(assumptions=card_constraints)
-            else:
+            if not minimum_ns_edges:
                 models = solver.enum_models()
-            yield from (extract_dfa(codec, apta, model) for model in models)
-            return
+                yield from (extract_dfa(codec, apta, m) for m in models)
+                return
+
+            model = solver.get_model()  # Save for analysis below.
+
+        # Search for maximally stuttering DFAs.
+        assert minimum_ns_edges
+        models = max_stuttering_dfas(solver_fact, codec, clauses, model)
+        yield from (extract_dfa(codec, apta, m) for m in models)
 
 
 def find_dfa(
@@ -154,7 +183,8 @@ def find_dfa(
       indicating that no DFA exists.
     """
     all_dfas = find_dfas(
-        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds
+        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds,
+        minimum_ns_edges 
     )
     return next(all_dfas, None)
 
