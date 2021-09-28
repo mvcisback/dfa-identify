@@ -262,6 +262,21 @@ def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
         yield [-parent_color, -node_color, parent_rel]  # 3
         yield [-parent_color, node_color, -parent_rel]  # 7
 
+def at_most_k_edges_clause(codec: Codec, apta: APTA) -> Clauses:
+    list_of_non_stuttering = []
+    colors = range(codec.n_colors)
+    non_root_nodes = set(apta.nodes) - {0}     # Root doesn't have a parent.
+    non_stuttering_count = 0
+    max_var_id = 0
+    for node, i, j in product(non_root_nodes, colors, colors):
+        parent_rel = codec.parent_relation(token, i, j)
+        max_var_id = max(max_var_id, abs(parent_rel))
+        if i != j:
+            token = apta.alphabet[apta.nodes[node]['source']]
+            list_of_non_stuttering.append(parent_rel)
+            non_stuttering_count += 1
+    return max_var_id, non_stuttering_count, list_of_non_stuttering
+
 
 def determination_conflicts(codec: Codec, cgraph: nx.Graph) -> Clauses:
     colors = range(codec.n_colors)

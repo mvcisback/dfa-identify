@@ -65,3 +65,17 @@ def test_enumerate():
             sym_mode=sym_mode,
         ))
         assert len(dfas) == 4
+
+def test_identify_ns_edges():
+    accepting = ['a', 'abaa', 'bb']
+    rejecting = ['abb', 'b']
+
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, minimum_ns_edges=True)
+
+    for x in accepting:
+        assert my_dfa.label(x)
+
+    for x in rejecting:
+        assert not my_dfa.label(x)
+
+    assert len(my_dfa.states()) == 3

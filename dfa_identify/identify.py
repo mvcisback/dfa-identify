@@ -3,16 +3,38 @@ from typing import Optional, Iterable
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
+from pysat.card import CardEnc
 
 from dfa_identify.graphs import Word, APTA
-from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
+from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode, Encodings
 from dfa_identify.encoding import Bounds, ExtraClauseGenerator
+from dfa_identify.encoding import at_most_k_edges_clause
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
     ParentRelationVar
 )
 
+def find_edge_count_constraints(
+        codec: Codec,
+        apta: APTA,
+        solver
+) -> int:
+    # calculate the maximum number of edges
+    top_lit, upper_bound, lits = at_most_k_edges_clause(codec, apta)
+    lower_bound = codec.n_nodes - 1
+
+    # now, binary search using cardinality constraints
+    while lower_bound < upper_bound:
+        current_bound = int((lower_bound + upper_bound) / 2)
+        card_constraints = CardEnc.atmost(lits=lits, bound=current_bound, top_id=top_lit)
+
+        curr_result = solver.solve(assumptions=card_constraints)
+        if curr_result:
+            upper_bound = current_bound
+        else:
+            lower_bound = current_bound
+    return CardEnc.atmost(lits=lits, bound=lower_bound, top_id=top_lit)
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
@@ -49,7 +71,6 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         char = token2char[var.token]
         assert char not in char2node
         char2node[char] = var.node_color
-
     return dict2dfa(dfa_dict, start=node2color[0])
 
 
@@ -60,6 +81,7 @@ def find_dfas(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
+        minimum_ns_edges: bool = False
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -94,8 +116,11 @@ def find_dfas(
 
             if not solver.solve():
                 continue
-
-            models = solver.enum_models()
+            if minimum_ns_edges:
+                card_constraints = find_edge_count_constraints(codec, apta, solver)
+                models = solver.enum_models(assumptions=card_constraints)
+            else:
+                models = solver.enum_models()
             yield from (extract_dfa(codec, apta, model) for model in models)
             return
 
@@ -107,6 +132,7 @@ def find_dfa(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
+        minimum_ns_edges: bool = False
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
