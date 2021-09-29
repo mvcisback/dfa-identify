@@ -101,3 +101,14 @@ def test_identify_ns_edges():
     for s1, (_, transitions) in graph.items():
         count += sum(s1 != s2 for s2 in transitions.values())
     assert count == 3
+
+    my_dfa = find_dfa(
+        minimum_ns_edges = True,
+        accepting=[
+            (0, 0, 0, 1)
+        ],
+        rejecting=[
+            (0, 0, 0, 0),
+        ]
+    )
+ 
