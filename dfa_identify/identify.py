@@ -42,8 +42,6 @@ def max_stuttering_dfas(
                 solver.append_formula(card_formula, no_return=False)
             if not solver.solve():
                 return
-            model = solver.get_model()
-            assert non_stutter_count(model) <= bound
             yield from solver.enum_models()
 
     def non_stutter_count(model) -> int:
