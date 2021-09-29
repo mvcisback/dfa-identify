@@ -1,3 +1,5 @@
+import dfa
+
 from dfa_identify import find_dfa, find_dfas
 
 
@@ -79,3 +81,23 @@ def test_identify_ns_edges():
         assert not my_dfa.label(x)
 
     assert len(my_dfa.states()) == 3
+
+
+    my_dfa = find_dfa(
+        minimum_ns_edges = True,
+        accepting=[
+            ('yellow',),
+            ('yellow', 'yellow'),
+        ],
+        rejecting=[
+            (), ('red',), ('red', 'red'),
+            ('red', 'yellow'), ('yellow', 'red'),
+            ('yellow', 'yellow', 'red'),
+        ]
+    )
+    assert len(mydfa.states()) == 3
+    graph, _ = dfa.dfa2dict(my_dfa)
+    count = 0
+    for s1, _, transitions in graph.items():
+        count += sum(s1 != s2 for s2 in transitions.values())
+    assert count == 3
