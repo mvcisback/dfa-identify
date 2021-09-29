@@ -151,6 +151,7 @@ def find_dfas(
         assert minimum_ns_edges
         models = max_stuttering_dfas(solver_fact, codec, clauses, model)
         yield from (extract_dfa(codec, apta, m) for m in models)
+        return
 
 
 def find_dfa(
