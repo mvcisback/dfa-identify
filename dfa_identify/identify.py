@@ -3,6 +3,7 @@ from typing import Optional, Iterable
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
+from pysat.card import CardEnc
 
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
@@ -12,6 +13,62 @@ from dfa_identify.encoding import (
     ColorNodeVar,
     ParentRelationVar
 )
+
+
+def order_models_by_stutter(
+        solver_fact,
+        codec: Codec,
+        clauses: list[list[int]],
+        model: list[int],
+) -> Iterable[DFA]:
+    top_id = codec.offsets[-1]
+
+    # Compute parent relation variables that don't stutter.
+    lits = []
+    for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
+        par_rel = codec.decode(lit)
+        assert isinstance(par_rel, ParentRelationVar)
+        if par_rel.node_color == par_rel.parent_color:
+            continue
+        lits.append(lit)
+
+    # Binary search for min non-stutter using cardinality constraints.
+
+    def non_stutter_count(model) -> int:
+        return sum(model[x - 1] > 0 for x in lits)
+
+    def find_models(bound: int, equality=True):
+        make_formula = CardEnc.equals if equality else CardEnc.atleast
+        formula = make_formula(lits=lits, bound=bound, top_id=top_id)
+
+        with solver_fact(bootstrap_with=clauses) as solver:
+            solver.append_formula(formula, no_return=True)
+            if not solver.solve():
+                return
+            yield from solver.enum_models()
+
+    candidate_bound = non_stutter_count(model)  # Candidate upper bound.
+    hi = candidate_bound     # Also upper bounds lower bound.
+    lo = codec.n_colors - 1  # Each node needs to be visited.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        models = find_models(mid)
+        witness = next(models, None)
+        if witness is not None:
+            hi = non_stutter_count(witness)
+            assert hi <= mid
+        else:
+            lo = mid + 1
+
+    # Incrementally emit models with less stutter.
+    naive_bound = (codec.n_colors - 1) ** codec.n_tokens * codec.n_colors
+    for bound in range(lo, naive_bound):
+        if bound > candidate_bound:
+            witness = next(find_models(bound, upper_bound_check=True), None)
+            if witness is None:
+                break
+            candidate_bound = non_stutter_count(witness)
+        yield from find_models(bound)
 
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
@@ -49,7 +106,6 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         char = token2char[var.token]
         assert char not in char2node
         char2node[char] = var.node_color
-
     return dict2dfa(dfa_dict, start=node2color[0])
 
 
@@ -60,6 +116,7 @@ def find_dfas(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
+        order_by_stutter: bool = False
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -78,6 +135,7 @@ def find_dfas(
       - sym_mode: Which symmetry breaking strategy to employ.
       - extra_clauses: Optional user defined additional clauses to add
           for a given codec (encoding of size k DFA).
+      - order_by_stutter: Order DFA by number of self loop transitions.
 
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
@@ -95,16 +153,20 @@ def find_dfas(
         extra_clauses=extra_clauses, bounds=bounds)
 
     for codec, clauses in encodings:
-        with solver_fact() as solver:
-            for clause in clauses:
-                solver.add_clause(clause)
-
+        with solver_fact(bootstrap_with=clauses) as solver:
             if not solver.solve():
                 continue
+            if not order_by_stutter:
+                models = solver.enum_models()
+                yield from (extract_dfa(codec, apta, m) for m in models)
+                return
 
-            models = solver.enum_models()
-            yield from (extract_dfa(codec, apta, model) for model in models)
-            return
+            model = solver.get_model()  # Save for analysis below.
+
+        # Search for maximally stuttering DFAs.
+        models = order_models_by_stutter(solver_fact, codec, clauses, model)
+        yield from (extract_dfa(codec, apta, m) for m in models)
+        return
 
 
 def find_dfa(
@@ -114,6 +176,7 @@ def find_dfa(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
+        order_by_stutter: bool = False
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -129,13 +192,15 @@ def find_dfa(
       - sym_mode: Which symmetry breaking strategy to employ.
       - extra_clauses: Optional user defined additional clauses to add
           for a given codec (encoding of size k DFA).
+      - order_by_stutter: Order DFA by number of self loop transitions.
 
     Returns:
       Either a DFA consistent with accepting and rejecting or None
       indicating that no DFA exists.
     """
     all_dfas = find_dfas(
-        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds
+        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds,
+        order_by_stutter
     )
     return next(all_dfas, None)
 
