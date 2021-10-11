@@ -68,11 +68,16 @@ def test_enumerate():
         ))
         assert len(dfas) == 4
 
+
 def test_identify_ns_edges():
     accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']
 
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, minimum_ns_edges=True)
+    my_dfa = find_dfa(
+        accepting=accepting,
+        rejecting=rejecting,
+        order_by_stutter=True,
+    )
 
     for x in accepting:
         assert my_dfa.label(x)
@@ -82,9 +87,8 @@ def test_identify_ns_edges():
 
     assert len(my_dfa.states()) == 3
 
-
     my_dfa = find_dfa(
-        minimum_ns_edges = True,
+        order_by_stutter=True,
         accepting=[
             ('yellow',),
             ('yellow', 'yellow'),
@@ -103,7 +107,7 @@ def test_identify_ns_edges():
     assert count == 3
 
     my_dfa = find_dfa(
-        minimum_ns_edges = True,
+        order_by_stutter=True,
         accepting=[
             (0, 0, 0, 1)
         ],
@@ -111,15 +115,13 @@ def test_identify_ns_edges():
             (0, 0, 0, 0),
         ]
     )
- 
-def test_identify_enumerating_ns_edges():
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
 
+
+def test_order_by_stutter():
     dfas = find_dfas(
         accepting=['a'],
         rejecting=['', 'b'],
-        minimum_ns_edges=True
+        order_by_stutter=True
     )
     prev_count = 0
     for my_dfa in dfas:
