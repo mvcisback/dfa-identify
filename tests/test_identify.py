@@ -125,16 +125,29 @@ def test_identify_ns_edges():
 
 
 def test_order_by_stutter():
-    dfas = find_dfas(
+    unordered = list(find_dfas(
         accepting=['a'],
         rejecting=['', 'b'],
-        order_by_stutter=True
-    )
-    prev_count = 0
-    for my_dfa in dfas:
-        graph, _ = dfa.dfa2dict(my_dfa)
+        order_by_stutter=False,
+    ))
+
+    ordered = list(find_dfas(
+        accepting=['a'],
+        rejecting=['', 'b'],
+        order_by_stutter=True,
+    ))
+
+    assert len(ordered) == len(unordered)
+
+    def non_stutter_count(x):
+        graph, _ = dfa.dfa2dict(x)
         count = 0
         for s1, (_, transitions) in graph.items():
             count += sum(s1 != s2 for s2 in transitions.values())
-        assert count >= prev_count
-        prev_count = count
+        return count
+
+    ordered_counts = list(map(non_stutter_count, ordered))
+    unordered_counts = list(map(non_stutter_count, unordered))
+
+    assert set(ordered_counts) == set(unordered_counts)
+    assert ordered == sorted(ordered, key=non_stutter_count)

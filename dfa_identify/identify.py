@@ -37,8 +37,7 @@ def order_models_by_stutter(
     def non_stutter_count(model) -> int:
         return sum(model[x - 1] > 0 for x in lits)
 
-    def find_models(bound: int, equality=True):
-        make_formula = CardEnc.equals if equality else CardEnc.atleast
+    def find_models(bound: int, make_formula):
         formula = make_formula(lits=lits, bound=bound, top_id=top_id)
 
         with solver_fact(bootstrap_with=clauses) as solver:
@@ -52,7 +51,7 @@ def order_models_by_stutter(
     lo = codec.n_colors - 1  # Each node needs to be visited.
     while lo < hi:
         mid = (lo + hi) // 2
-        models = find_models(mid)
+        models = find_models(mid, CardEnc.atmost)
         witness = next(models, None)
         if witness is not None:
             hi = non_stutter_count(witness)
@@ -61,14 +60,15 @@ def order_models_by_stutter(
             lo = mid + 1
 
     # Incrementally emit models with less stutter.
-    naive_bound = (codec.n_colors - 1) ** codec.n_tokens * codec.n_colors
+    naive_bound = len(lits)
     for bound in range(lo, naive_bound):
         if bound > candidate_bound:
-            witness = next(find_models(bound, equality=False), None)
+            witness = next(find_models(bound, CardEnc.atmost), None)
             if witness is None:
                 break
             candidate_bound = non_stutter_count(witness)
-        yield from find_models(bound)
+
+        yield from find_models(bound, CardEnc.equals)
 
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
