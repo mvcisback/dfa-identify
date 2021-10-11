@@ -112,3 +112,20 @@ def test_identify_ns_edges():
         ]
     )
  
+def test_identify_enumerating_ns_edges():
+    accepting = ['a', 'abaa', 'bb']
+    rejecting = ['abb', 'b']
+
+    dfas = find_dfas(
+        accepting=['a'],
+        rejecting=['', 'b'],
+        minimum_ns_edges=True
+    )
+    prev_count = 0
+    for my_dfa in dfas:
+        graph, _ = dfa.dfa2dict(my_dfa)
+        count = 0
+        for s1, (_, transitions) in graph.items():
+            count += sum(s1 != s2 for s2 in transitions.values())
+        assert count >= prev_count
+        prev_count = count

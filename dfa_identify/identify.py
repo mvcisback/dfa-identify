@@ -32,8 +32,15 @@ def max_stuttering_dfas(
 
     top_id = codec.offsets[-1]
 
+    def non_stutter_count(model) -> int:
+        return sum(model[x - 1] > 0 for x in lits)
+
+    upper_bound = non_stutter_count(model)
+    hi = upper_bound
+    lo = codec.n_colors - 1
+
     def find_models(bound: int):
-        card_formula = CardEnc.atmost(lits=lits, bound=bound, top_id=top_id)
+        card_formula = CardEnc.equals(lits=lits, bound=bound, top_id=top_id)
         
         with solver_fact(bootstrap_with=clauses) as solver:
             if solver.supports_atmost():
@@ -43,12 +50,6 @@ def max_stuttering_dfas(
             if not solver.solve():
                 return
             yield from solver.enum_models()
-
-    def non_stutter_count(model) -> int:
-        return sum(model[x - 1] > 0 for x in lits)
-
-    hi = non_stutter_count(model)
-    lo = codec.n_colors - 1
 
     # Binary search using cardinality constraints
     while lo < hi:
@@ -60,7 +61,8 @@ def max_stuttering_dfas(
             assert hi <= mid
         else:
             lo = mid + 1
-    yield from find_models(lo)
+    for bound in range(lo, upper_bound + 1):
+        yield from find_models(bound)
 
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
