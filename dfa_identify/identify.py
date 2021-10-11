@@ -61,15 +61,17 @@ def max_stuttering_dfas(
         else:
             lo = mid + 1
     # while we haven't exceeded our upper bound: keep enumerating DFAs
+    naive_upper_bound = (codec.n_colors - 1) ** codec.n_tokens * codec.n_colors
     bound = lo
     upper_bound = bound
-    while bound <= upper_bound:
-        if bound == upper_bound:
+    for bound in range(lo, naive_upper_bound):
+        if bound > upper_bound:
             upper_model = next(find_models(upper_bound + 1, upper_bound_check=True), None)
             if upper_model is not None:
                 upper_bound = non_stutter_count(upper_model)
+            else:
+                break
         yield from find_models(bound)
-        bound += 1
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
