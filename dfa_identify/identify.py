@@ -35,18 +35,17 @@ def max_stuttering_dfas(
     def non_stutter_count(model) -> int:
         return sum(model[x - 1] > 0 for x in lits)
 
-    upper_bound = non_stutter_count(model)
-    hi = upper_bound
+    hi = non_stutter_count(model)
     lo = codec.n_colors - 1
 
-    def find_models(bound: int):
-        card_formula = CardEnc.equals(lits=lits, bound=bound, top_id=top_id)
+    def find_models(bound: int, upper_bound_check=False):
+        if upper_bound_check:
+            card_formula = CardEnc.atleast(lits=lits, bound=bound, top_id=top_id)
+        else:
+            card_formula = CardEnc.equals(lits=lits, bound=bound, top_id=top_id)
         
         with solver_fact(bootstrap_with=clauses) as solver:
-            if solver.supports_atmost():
-                solver.add_atmost(lits, bound)
-            else:
-                solver.append_formula(card_formula, no_return=True)
+            solver.append_formula(card_formula, no_return=True)
             if not solver.solve():
                 return
             yield from solver.enum_models()
@@ -61,9 +60,16 @@ def max_stuttering_dfas(
             assert hi <= mid
         else:
             lo = mid + 1
-    for bound in range(lo, upper_bound + 1):
+    # while we haven't exceeded our upper bound: keep enumerating DFAs
+    bound = lo
+    upper_bound = bound
+    while bound <= upper_bound:
+        if bound == upper_bound:
+            upper_model = next(find_models(upper_bound + 1, upper_bound_check=True), None)
+            if upper_model is not None:
+                upper_bound = non_stutter_count(upper_model)
         yield from find_models(bound)
-
+        bound += 1
 
 def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     # Fill in don't cares in model.
