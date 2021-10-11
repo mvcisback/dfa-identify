@@ -64,7 +64,7 @@ def order_models_by_stutter(
     naive_bound = (codec.n_colors - 1) ** codec.n_tokens * codec.n_colors
     for bound in range(lo, naive_bound):
         if bound > candidate_bound:
-            witness = next(find_models(bound, upper_bound_check=True), None)
+            witness = next(find_models(bound, equality=False), None)
             if witness is None:
                 break
             candidate_bound = non_stutter_count(witness)
