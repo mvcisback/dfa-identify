@@ -61,7 +61,7 @@ def order_models_by_stutter(
 
     # Incrementally emit models with less stutter.
     naive_bound = len(lits)
-    for bound in range(lo, naive_bound):
+    for bound in range(lo, naive_bound + 1):
         if bound > candidate_bound:
             witness = next(find_models(bound, CardEnc.atmost), None)
             if witness is None:

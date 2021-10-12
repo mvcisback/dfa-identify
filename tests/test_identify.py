@@ -125,29 +125,36 @@ def test_identify_ns_edges():
 
 
 def test_order_by_stutter():
-    unordered = list(find_dfas(
-        accepting=['a'],
-        rejecting=['', 'b'],
-        order_by_stutter=False,
-    ))
+    examples = [
+        (['x'], []),
+        ([], ['y']),
+        (['a'], ['', 'b']),
+    ]
 
-    ordered = list(find_dfas(
-        accepting=['a'],
-        rejecting=['', 'b'],
-        order_by_stutter=True,
-    ))
+    for accepting, rejecting in examples:
+        unordered = list(find_dfas(
+            accepting=accepting,
+            rejecting=rejecting,
+            order_by_stutter=False,
+        ))
 
-    assert len(ordered) == len(unordered)
+        ordered = list(find_dfas(
+            accepting=accepting,
+            rejecting=rejecting,
+            order_by_stutter=True,
+        ))
 
-    def non_stutter_count(x):
-        graph, _ = dfa.dfa2dict(x)
-        count = 0
-        for s1, (_, transitions) in graph.items():
-            count += sum(s1 != s2 for s2 in transitions.values())
-        return count
+        assert len(ordered) == len(unordered)
 
-    ordered_counts = list(map(non_stutter_count, ordered))
-    unordered_counts = list(map(non_stutter_count, unordered))
+        def non_stutter_count(x):
+            graph, _ = dfa.dfa2dict(x)
+            count = 0
+            for s1, (_, transitions) in graph.items():
+                count += sum(s1 != s2 for s2 in transitions.values())
+            return count
 
-    assert set(ordered_counts) == set(unordered_counts)
-    assert ordered == sorted(ordered, key=non_stutter_count)
+        ordered_counts = list(map(non_stutter_count, ordered))
+        unordered_counts = list(map(non_stutter_count, unordered))
+
+        assert set(ordered_counts) == set(unordered_counts)
+        assert ordered == sorted(ordered, key=non_stutter_count)
