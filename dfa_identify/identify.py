@@ -168,7 +168,7 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     return dict2dfa(dfa_dict, start=node2color[0])
 
 
-__all__ = ['find_dfas', 'find_dfa', 'extract_dfa']
+__all__ = ['DFA', 'find_dfas', 'find_dfa', 'extract_dfa']
 
 
 def order_models_by_stutter(
