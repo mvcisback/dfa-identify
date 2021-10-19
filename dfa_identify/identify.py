@@ -1,7 +1,10 @@
-from itertools import groupby
-from typing import Optional, Iterable
+from __future__ import annotations
 
-from dfa import dict2dfa, DFA
+from itertools import groupby
+from typing import Optional, Iterable, Sequence
+
+import attr
+from dfa import dict2dfa, DFA as _DFA
 from pysat.solvers import Glucose4
 from pysat.card import CardEnc
 
@@ -15,98 +18,20 @@ from dfa_identify.encoding import (
 )
 
 
-def order_models_by_stutter(
-        solver_fact,
-        codec: Codec,
-        clauses: list[list[int]],
-        model: list[int],
-) -> Iterable[DFA]:
-    top_id = codec.offsets[-1]
+@attr.frozen
+class DFA(_DFA):
+    """Varient of dfa.DFA whose hash/eq is determined by sat model.
 
-    # Compute parent relation variables that don't stutter.
-    lits = []
-    for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
-        par_rel = codec.decode(lit)
-        assert isinstance(par_rel, ParentRelationVar)
-        if par_rel.node_color == par_rel.parent_color:
-            continue
-        lits.append(lit)
+    If bfs symmetry breaking used, then only a single model is associated
+    with the family of isomorphic reduced DFAs.
+    """
+    model: Sequence[int] = ()
 
-    # Binary search for min non-stutter using cardinality constraints.
+    def __hash__(self) -> int:
+        return hash(tuple(self.model))
 
-    def non_stutter_count(model) -> int:
-        return sum(model[x - 1] > 0 for x in lits)
-
-    def find_models(bound: int, make_formula):
-        formula = make_formula(lits=lits, bound=bound, top_id=top_id)
-
-        with solver_fact(bootstrap_with=clauses) as solver:
-            solver.append_formula(formula, no_return=True)
-            if not solver.solve():
-                return
-            yield from solver.enum_models()
-
-    candidate_bound = non_stutter_count(model)  # Candidate upper bound.
-    hi = candidate_bound     # Also upper bounds lower bound.
-    lo = codec.n_colors - 1  # Each node needs to be visited.
-    while lo < hi:
-        mid = (lo + hi) // 2
-        models = find_models(mid, CardEnc.atmost)
-        witness = next(models, None)
-        if witness is not None:
-            hi = non_stutter_count(witness)
-            assert hi <= mid
-        else:
-            lo = mid + 1
-
-    # Incrementally emit models with less stutter.
-    naive_bound = len(lits)
-    for bound in range(lo, naive_bound + 1):
-        if bound > candidate_bound:
-            witness = next(find_models(bound, CardEnc.atmost), None)
-            if witness is None:
-                break
-            candidate_bound = non_stutter_count(witness)
-
-        yield from find_models(bound, CardEnc.equals)
-
-
-def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
-    # Fill in don't cares in model.
-    decoded = map(codec.decode, model)
-    decoded = list(decoded)
-    var_groups = groupby(decoded, type)
-
-    group1 = next(var_groups)
-    assert group1[0] == ColorAcceptingVar
-    accepting = {v.color for v in group1[1] if v.true}
-
-    group2 = next(var_groups)
-    assert group2[0] == ColorNodeVar
-
-    node2color = {}
-    for var in group2[1]:
-        if not var.true:
-            continue
-        assert var.node not in node2color
-        node2color[var.node] = var.color
-
-        if var.color in accepting:
-            assert apta.tree.nodes[var.node].get('label', True)
-
-    group3 = next(var_groups)
-    assert group3[0] == ParentRelationVar
-    dfa_dict = {}
-    token2char = apta.alphabet.inv
-    for var in group3[1]:
-        if not var.true:
-            continue
-        default = (var.parent_color in accepting, {})
-        (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
-        char = token2char[var.token]
-        assert char not in char2node
-        char2node[char] = var.node_color
-    return dict2dfa(dfa_dict, start=node2color[0])
+    def __eq__(self, other: DFA) -> bool:
+        return self.model == other.model
 
 
 def find_dfas(
@@ -205,4 +130,98 @@ def find_dfa(
     return next(all_dfas, None)
 
 
+def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
+    # Fill in don't cares in model.
+    decoded = map(codec.decode, model)
+    decoded = list(decoded)
+    var_groups = groupby(decoded, type)
+
+    group1 = next(var_groups)
+    assert group1[0] == ColorAcceptingVar
+    accepting = {v.color for v in group1[1] if v.true}
+
+    group2 = next(var_groups)
+    assert group2[0] == ColorNodeVar
+
+    node2color = {}
+    for var in group2[1]:
+        if not var.true:
+            continue
+        assert var.node not in node2color
+        node2color[var.node] = var.color
+
+        if var.color in accepting:
+            assert apta.tree.nodes[var.node].get('label', True)
+
+    group3 = next(var_groups)
+    assert group3[0] == ParentRelationVar
+    dfa_dict = {}
+    token2char = apta.alphabet.inv
+    for var in group3[1]:
+        if not var.true:
+            continue
+        default = (var.parent_color in accepting, {})
+        (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
+        char = token2char[var.token]
+        assert char not in char2node
+        char2node[char] = var.node_color
+    return dict2dfa(dfa_dict, start=node2color[0])
+
+
 __all__ = ['find_dfas', 'find_dfa', 'extract_dfa']
+
+
+def order_models_by_stutter(
+        solver_fact,
+        codec: Codec,
+        clauses: list[list[int]],
+        model: list[int],
+) -> Iterable[DFA]:
+    top_id = codec.offsets[-1]
+
+    # Compute parent relation variables that don't stutter.
+    lits = []
+    for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
+        par_rel = codec.decode(lit)
+        assert isinstance(par_rel, ParentRelationVar)
+        if par_rel.node_color == par_rel.parent_color:
+            continue
+        lits.append(lit)
+
+    # Binary search for min non-stutter using cardinality constraints.
+
+    def non_stutter_count(model) -> int:
+        return sum(model[x - 1] > 0 for x in lits)
+
+    def find_models(bound: int, make_formula):
+        formula = make_formula(lits=lits, bound=bound, top_id=top_id)
+
+        with solver_fact(bootstrap_with=clauses) as solver:
+            solver.append_formula(formula, no_return=True)
+            if not solver.solve():
+                return
+            yield from solver.enum_models()
+
+    candidate_bound = non_stutter_count(model)  # Candidate upper bound.
+    hi = candidate_bound     # Also upper bounds lower bound.
+    lo = codec.n_colors - 1  # Each node needs to be visited.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        models = find_models(mid, CardEnc.atmost)
+        witness = next(models, None)
+        if witness is not None:
+            hi = non_stutter_count(witness)
+            assert hi <= mid
+        else:
+            lo = mid + 1
+
+    # Incrementally emit models with less stutter.
+    naive_bound = len(lits)
+    for bound in range(lo, naive_bound + 1):
+        if bound > candidate_bound:
+            witness = next(find_models(bound, CardEnc.atmost), None)
+            if witness is None:
+                break
+            candidate_bound = non_stutter_count(witness)
+
+        yield from find_models(bound, CardEnc.equals)
