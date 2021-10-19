@@ -41,7 +41,8 @@ def find_dfas(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
-        order_by_stutter: bool = False
+        order_by_stutter: bool = False,
+        alphabet: frozenset = None,
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -61,6 +62,7 @@ def find_dfas(
       - extra_clauses: Optional user defined additional clauses to add
           for a given codec (encoding of size k DFA).
       - order_by_stutter: Order DFA by number of self loop transitions.
+      - alphabet: Optionally specify the alphabet the DFA should be over.
 
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
@@ -72,7 +74,9 @@ def find_dfas(
     if set(accepting) & set(rejecting):
         return
 
-    apta = APTA.from_examples(accepting=accepting, rejecting=rejecting)
+    apta = APTA.from_examples(
+        accepting=accepting, rejecting=rejecting, alphabet=alphabet
+    )
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
         extra_clauses=extra_clauses, bounds=bounds)
@@ -101,7 +105,8 @@ def find_dfa(
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
-        order_by_stutter: bool = False
+        order_by_stutter: bool = False,
+        alphabet: frozenset = None,
 ) -> Optional[DFA]:
     """Finds a minimal dfa that is consistent with the labeled examples.
 
@@ -118,6 +123,7 @@ def find_dfa(
       - extra_clauses: Optional user defined additional clauses to add
           for a given codec (encoding of size k DFA).
       - order_by_stutter: Order DFA by number of self loop transitions.
+      - alphabet: Optionally specify the alphabet the DFA should be over.
 
     Returns:
       Either a DFA consistent with accepting and rejecting or None
@@ -125,7 +131,7 @@ def find_dfa(
     """
     all_dfas = find_dfas(
         accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds,
-        order_by_stutter
+        order_by_stutter, alphabet
     )
     return next(all_dfas, None)
 

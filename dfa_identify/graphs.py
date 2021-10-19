@@ -46,7 +46,10 @@ class APTA:
         return {n for n, d in nodes if not d.get('label', True)}
 
     @staticmethod
-    def from_examples(accepting: list[Word], rejecting: list[Word]) -> APTA:
+    def from_examples(
+            accepting: list[Word],
+            rejecting: list[Word],
+            alphabet: frozenset = None) -> APTA:
         """Return Augmented Prefix Tree Automata for accepting, rejecting."""
         # Create prefix tree.
         tree, root = nx.prefix_tree(chain(accepting, rejecting)), 0
@@ -68,10 +71,19 @@ class APTA:
         relabels[root] = 0
         nx.relabel_nodes(tree, relabels, copy=False)
 
-        alphabet = {d['source'] for n, d in tree.nodes(data=True) if n != 0}
+        # Construct alphabet for DFA.
+        alphabet2 = {d['source'] for n, d in tree.nodes(data=True) if n != 0}
+        if (alphabet is not None):
+            if alphabet2 - alphabet:
+                raise ValueError("Symbols in examples not in alphabet")
+            alphabet |= alphabet2
+        else:
+            alphabet = alphabet2
+
         if None in alphabet:
             raise ValueError("None not allowed in alphabet.")
         alphabet = bidict(enumerate(alphabet)).inv
+
         return APTA(tree, alphabet)
 
     def consistency_graph(self) -> nx.Graph:
