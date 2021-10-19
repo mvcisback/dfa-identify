@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import groupby
-from typing import Optional, Iterable, Sequence
+from typing import Optional, Iterable
 
 import attr
 from dfa import dict2dfa, DFA as _DFA
@@ -25,7 +25,7 @@ class DFA(_DFA):
     If bfs symmetry breaking used, then only a single model is associated
     with the family of isomorphic reduced DFAs.
     """
-    model: Sequence[int] = ()
+    model: tuple[int, int] = (0, 0)  # Compact representation of SAT encoding.
 
     def __hash__(self) -> int:
         return hash(tuple(self.model))
@@ -166,8 +166,14 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         assert char not in char2node
         char2node[char] = var.node_color
     dfa_ = dict2dfa(dfa_dict, start=node2color[0])
+
+    # Pack model into a pair of ints.
+    model_int = 0
+    for var in model:
+        model_int |= int(var > 0) << (abs(var) - 1)
+
     return DFA(
-        model=tuple(model),
+        model=(model_int, codec.offsets[-1]),
         start=dfa_.start,
         inputs=dfa_.inputs,
         outputs=dfa_.outputs,
