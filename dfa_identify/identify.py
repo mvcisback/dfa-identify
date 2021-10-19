@@ -165,7 +165,15 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         char = token2char[var.token]
         assert char not in char2node
         char2node[char] = var.node_color
-    return dict2dfa(dfa_dict, start=node2color[0])
+    dfa_ = dict2dfa(dfa_dict, start=node2color[0])
+    return DFA(
+        model=tuple(model),
+        start=dfa_.start,
+        inputs=dfa_.inputs,
+        outputs=dfa_.outputs,
+        label=dfa_._label,
+        transition=dfa_._transition,
+    )
 
 
 __all__ = ['DFA', 'find_dfas', 'find_dfa', 'extract_dfa']
