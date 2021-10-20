@@ -3,8 +3,7 @@ from __future__ import annotations
 from itertools import groupby
 from typing import Optional, Iterable
 
-import attr
-from dfa import dict2dfa, DFA as _DFA
+from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
 from pysat.card import CardEnc
 
@@ -16,16 +15,6 @@ from dfa_identify.encoding import (
     ColorNodeVar,
     ParentRelationVar
 )
-
-
-@attr.frozen
-class DFA(_DFA):
-    """Varient of dfa.DFA whose hash/eq is determined by sat model.
-
-    If bfs symmetry breaking used, then only a single model is associated
-    with the family of isomorphic reduced DFAs.
-    """
-    model: tuple[int, int] = (0, 0)  # Compact representation of SAT encoding.
 
 
 def find_dfas(
@@ -167,13 +156,7 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
         char2node[char] = var.node_color
     dfa_ = dict2dfa(dfa_dict, start=node2color[0])
 
-    # Pack model into a pair of ints.
-    model_int = 0
-    for var in model:
-        model_int |= int(var > 0) << (abs(var) - 1)
-
     return DFA(
-        model=(model_int, codec.offsets[-1]),
         start=dfa_.start,
         inputs=dfa_.inputs,
         outputs=dfa_.outputs,
