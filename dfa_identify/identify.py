@@ -27,12 +27,6 @@ class DFA(_DFA):
     """
     model: tuple[int, int] = (0, 0)  # Compact representation of SAT encoding.
 
-    def __hash__(self) -> int:
-        return hash(tuple(self.model))
-
-    def __eq__(self, other: DFA) -> bool:
-        return self.model == other.model
-
 
 def find_dfas(
         accepting: list[Word],
