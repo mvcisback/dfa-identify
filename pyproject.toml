@@ -2,7 +2,7 @@
 name = "dfa_identify"
 readme = "README.md"
 repository = "https://github.com/mvcisback/dfa-identify"
-version = "3.5.0"
+version = "3.6.0"
 description = "Python library for identifying (learning) DFAs (automata) from labeled examples."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 license = "MIT"
