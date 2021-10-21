@@ -82,6 +82,13 @@ class APTA:
 
         if None in alphabet:
             raise ValueError("None not allowed in alphabet.")
+
+        # If possible, respect the alphabet's predefined ordering.
+        try:
+            alphabet = sorted(alphabet)
+        except Exception:
+            pass
+
         alphabet = bidict(enumerate(alphabet)).inv
 
         return APTA(tree, alphabet)
