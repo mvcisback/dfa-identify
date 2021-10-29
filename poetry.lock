@@ -38,7 +38,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "dfa"
-version = "2.3.1"
+version = "3.0.1"
 description = "Python library for modeling DFAs, Moore Machines, and Transition Systems."
 category = "main"
 optional = false
@@ -294,7 +294,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f344d7d421acc7a6614835ef4a0434858a5b9cd7739c9a76229d80d32fb31efb"
+content-hash = "5a971e96bdbe254c9e99de56be3de626f875d09ff760dfdcdf36c2a3e86a1f16"
 
 [metadata.files]
 atomicwrites = [
@@ -314,8 +314,8 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 dfa = [
-    {file = "dfa-2.3.1-py3-none-any.whl", hash = "sha256:b9366c378b731229f36fd47615561e9bfbc03b2e0b5a3d70125482308b9f6353"},
-    {file = "dfa-2.3.1.tar.gz", hash = "sha256:fc6bd6f7a7d904874f77ea5c99609dad12ecaefc89baf006a50b152339115905"},
+    {file = "dfa-3.0.1-py3-none-any.whl", hash = "sha256:0ed529bb25ffa4c71e763ef2bc5e60e9b7b29b579ce0869fa15e7a473c378372"},
+    {file = "dfa-3.0.1.tar.gz", hash = "sha256:2fc77e1efcb705ddb620676aa43435042dfc6554bca39a900c85125c5d0f248a"},
 ]
 execnet = [
     {file = "execnet-1.9.0-py2.py3-none-any.whl", hash = "sha256:a295f7cc774947aac58dde7fdc85f4aa00c42adf5d8f5468fc630c1acf30a142"},
