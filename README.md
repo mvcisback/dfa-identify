@@ -64,6 +64,19 @@ rejecting = [[0, 'z', 'z'], ['z']]
 my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
 ```
 
+# Minimality
+
+There are two forms of "minimality" supported by `dfa-identify`.
+
+1. By default, dfa-identify returns DFAs that have the minimum
+   number of states required to seperate the accepting and
+   rejecting set.
+2. If the `order_by_stutter` flag is set to `True`, then the
+   `find_dfas` (lazily) orders the DFAs so that the number of
+   self loops (stuttering transitions) appearing the DFAs decreases.
+   `find_dfa` thus returns a DFA with the most number of self loops
+   given the minimal number of states.
+
 # Encoding
 
 This library currently uses the encodings outlined in [Heule, Marijn JH, and Sicco Verwer. "Exact DFA identification using SAT solvers." International Colloquium on Grammatical Inference. Springer, Berlin, Heidelberg, 2010.](https://link.springer.com/chapter/10.1007/978-3-642-15488-1_7) and [Ulyantsev, Vladimir, Ilya Zakirzyanov, and Anatoly Shalyto. "Symmetry Breaking Predicates for SAT-based DFA Identification."](https://arxiv.org/abs/1602.05028).

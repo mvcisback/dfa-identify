@@ -68,11 +68,23 @@ def test_enumerate():
         ))
         assert len(dfas) == 4
 
+
+def test_overlapping_examples():
+    pos = [[False, True]]
+    neg = [[False], [False, True]]
+    my_dfa = find_dfa(accepting=pos, rejecting=neg)
+    assert my_dfa is None
+
+
 def test_identify_ns_edges():
     accepting = ['a', 'abaa', 'bb']
     rejecting = ['abb', 'b']
 
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, minimum_ns_edges=True)
+    my_dfa = find_dfa(
+        accepting=accepting,
+        rejecting=rejecting,
+        order_by_stutter=True,
+    )
 
     for x in accepting:
         assert my_dfa.label(x)
@@ -82,9 +94,8 @@ def test_identify_ns_edges():
 
     assert len(my_dfa.states()) == 3
 
-
     my_dfa = find_dfa(
-        minimum_ns_edges = True,
+        order_by_stutter=True,
         accepting=[
             ('yellow',),
             ('yellow', 'yellow'),
@@ -103,7 +114,7 @@ def test_identify_ns_edges():
     assert count == 3
 
     my_dfa = find_dfa(
-        minimum_ns_edges = True,
+        order_by_stutter=True,
         accepting=[
             (0, 0, 0, 1)
         ],
@@ -111,21 +122,39 @@ def test_identify_ns_edges():
             (0, 0, 0, 0),
         ]
     )
- 
-def test_identify_enumerating_ns_edges():
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
 
-    dfas = find_dfas(
-        accepting=['a'],
-        rejecting=['', 'b'],
-        minimum_ns_edges=True
-    )
-    prev_count = 0
-    for my_dfa in dfas:
-        graph, _ = dfa.dfa2dict(my_dfa)
-        count = 0
-        for s1, (_, transitions) in graph.items():
-            count += sum(s1 != s2 for s2 in transitions.values())
-        assert count >= prev_count
-        prev_count = count
+
+def test_order_by_stutter():
+    examples = [
+        (['x'], []),
+        ([], ['y']),
+        (['a'], ['', 'b']),
+    ]
+
+    for accepting, rejecting in examples:
+        unordered = list(find_dfas(
+            accepting=accepting,
+            rejecting=rejecting,
+            order_by_stutter=False,
+        ))
+
+        ordered = list(find_dfas(
+            accepting=accepting,
+            rejecting=rejecting,
+            order_by_stutter=True,
+        ))
+
+        assert len(ordered) == len(unordered)
+
+        def non_stutter_count(x):
+            graph, _ = dfa.dfa2dict(x)
+            count = 0
+            for s1, (_, transitions) in graph.items():
+                count += sum(s1 != s2 for s2 in transitions.values())
+            return count
+
+        ordered_counts = list(map(non_stutter_count, ordered))
+        unordered_counts = list(map(non_stutter_count, unordered))
+
+        assert set(ordered_counts) == set(unordered_counts)
+        assert ordered == sorted(ordered, key=non_stutter_count)
