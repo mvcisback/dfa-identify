@@ -13,7 +13,7 @@ attrs = "^21.0.0"
 networkx = "^2.6"
 funcy = "^1.15"
 bidict = "^0.21.2"
-python-sat = "^0.1.7-alpha.2"
+python-sat = "^0.1.7.dev11"
 dfa = "^2.1.2"
 
 [tool.poetry.dev-dependencies]
