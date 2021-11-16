@@ -26,6 +26,7 @@ def find_dfas(
         bounds: Bounds = (None, None),
         order_by_stutter: bool = False,
         alphabet: frozenset = None,
+        allow_unminimized: bool = False,
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -46,6 +47,8 @@ def find_dfas(
           for a given codec (encoding of size k DFA).
       - order_by_stutter: Order DFA by number of self loop transitions.
       - alphabet: Optionally specify the alphabet the DFA should be over.
+      - allow_unminimized: Continue after all minimized (equiv
+          states merges) have been enumerated.
 
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
@@ -71,6 +74,8 @@ def find_dfas(
             if not order_by_stutter:
                 models = solver.enum_models()
                 yield from (extract_dfa(codec, apta, m) for m in models)
+                if allow_unminimized:
+                    continue
                 return
 
             model = solver.get_model()  # Save for analysis below.
@@ -78,6 +83,8 @@ def find_dfas(
         # Search for maximally stuttering DFAs.
         models = order_models_by_stutter(solver_fact, codec, clauses, model)
         yield from (extract_dfa(codec, apta, m) for m in models)
+        if allow_unminimized:
+            continue
         return
 
 
