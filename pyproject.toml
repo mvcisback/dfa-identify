@@ -14,7 +14,7 @@ networkx = "^2.6.2"
 funcy = "^1.15"
 bidict = "^0.21.2"
 python-sat = "^0.1.7-alpha.2"
-dfa = "^2.2.1"
+dfa = "^4.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.3"
