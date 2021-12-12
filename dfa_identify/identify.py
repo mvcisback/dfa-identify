@@ -5,7 +5,9 @@ from typing import Optional, Iterable
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
+
 from pysat.card import CardEnc
+from more_itertools import roundrobin
 
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
@@ -59,6 +61,21 @@ def find_dfas(
 
     if set(accepting) & set(rejecting):
         return
+    elif len(accepting) == len(rejecting) == 0:
+        if not alphabet:
+            raise ValueError('Need examples or an alphabet!')
+
+        # Conjecture empty string label and interleave dfas.
+        kwargs = {
+            'solver_fact': solver_fact, 'sym_mode': sym_mode,
+            'extra_clauses': extra_clauses, 'bounds': bounds,
+            'order_by_stutter': order_by_stutter, 'alphabet': alphabet,
+            'allow_unminimized': allow_unminimized,
+        }
+        dfas_pos = find_dfas(accepting=[()], rejecting=[  ], **kwargs)
+        dfas_neg = find_dfas(accepting=[  ], rejecting=[()], **kwargs)
+        yield from roundrobin(dfas_pos, dfas_neg)
+        return 
 
     apta = APTA.from_examples(
         accepting=accepting, rejecting=rejecting, alphabet=alphabet

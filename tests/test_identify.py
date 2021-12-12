@@ -1,4 +1,7 @@
+import pytest
+
 import dfa
+from more_itertools import take
 
 from dfa_identify import find_dfa, find_dfas
 
@@ -158,3 +161,13 @@ def test_order_by_stutter():
 
         assert set(ordered_counts) == set(unordered_counts)
         assert ordered == sorted(ordered, key=non_stutter_count)
+
+
+def test_empty_examples():
+    with pytest.raises(ValueError):
+        next(find_dfas(accepting=[], rejecting=[]))
+
+    dfas = take(4, find_dfas(accepting=[], rejecting=[], alphabet={'x', 'y'}))
+    assert len(dfas) == 2
+    for i, dfa in enumerate(dfas):
+        assert dfa.label(()) != (i & 1)

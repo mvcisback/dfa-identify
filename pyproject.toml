@@ -15,6 +15,7 @@ funcy = "^1.15"
 bidict = "^0.21.2"
 python-sat = "^0.1.7.dev11"
 dfa = "^4"
+more-itertools = "^8.12.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.3"
