@@ -5,7 +5,9 @@ from typing import Optional, Iterable
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
+
 from pysat.card import CardEnc
+from more_itertools import roundrobin
 
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
@@ -26,6 +28,7 @@ def find_dfas(
         bounds: Bounds = (None, None),
         order_by_stutter: bool = False,
         alphabet: frozenset = None,
+        allow_unminimized: bool = False,
 ) -> Iterable[DFA]:
     """Finds all minimal dfa that are consistent with the labeled examples.
 
@@ -46,6 +49,8 @@ def find_dfas(
           for a given codec (encoding of size k DFA).
       - order_by_stutter: Order DFA by number of self loop transitions.
       - alphabet: Optionally specify the alphabet the DFA should be over.
+      - allow_unminimized: Continue after all minimized (equiv
+          states merges) have been enumerated.
 
     Returns:
       An iterable of all minimal DFA consistent with accepting and rejecting.
@@ -56,6 +61,21 @@ def find_dfas(
 
     if set(accepting) & set(rejecting):
         return
+    elif len(accepting) == len(rejecting) == 0:
+        if not alphabet:
+            raise ValueError('Need examples or an alphabet!')
+
+        # Conjecture empty string label and interleave dfas.
+        kwargs = {
+            'solver_fact': solver_fact, 'sym_mode': sym_mode,
+            'extra_clauses': extra_clauses, 'bounds': bounds,
+            'order_by_stutter': order_by_stutter, 'alphabet': alphabet,
+            'allow_unminimized': allow_unminimized,
+        }
+        dfas_pos = find_dfas(accepting=[()], rejecting=[  ], **kwargs)
+        dfas_neg = find_dfas(accepting=[  ], rejecting=[()], **kwargs)
+        yield from roundrobin(dfas_pos, dfas_neg)
+        return 
 
     apta = APTA.from_examples(
         accepting=accepting, rejecting=rejecting, alphabet=alphabet
@@ -71,6 +91,8 @@ def find_dfas(
             if not order_by_stutter:
                 models = solver.enum_models()
                 yield from (extract_dfa(codec, apta, m) for m in models)
+                if allow_unminimized:
+                    continue
                 return
 
             model = solver.get_model()  # Save for analysis below.
@@ -78,6 +100,8 @@ def find_dfas(
         # Search for maximally stuttering DFAs.
         models = order_models_by_stutter(solver_fact, codec, clauses, model)
         yield from (extract_dfa(codec, apta, m) for m in models)
+        if allow_unminimized:
+            continue
         return
 
 

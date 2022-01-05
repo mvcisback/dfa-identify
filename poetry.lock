@@ -38,7 +38,11 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "dfa"
+<<<<<<< HEAD
 version = "3.0.1"
+=======
+version = "4.0.0"
+>>>>>>> 3c2e8fcfe1c6685759a8397cd70fb5f232106e09
 description = "Python library for modeling DFAs, Moore Machines, and Transition Systems."
 category = "main"
 optional = false
@@ -114,6 +118,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "more-itertools"
+version = "8.12.0"
+description = "More routines for operating on iterables, beyond itertools"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "networkx"
 version = "2.6.3"
 description = "Python package for creating and manipulating graphs and networks"
@@ -153,11 +165,11 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "py"
-version = "1.10.0"
+version = "1.11.0"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "pycodestyle"
@@ -188,7 +200,11 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pyparsing"
+<<<<<<< HEAD
 version = "3.0.3"
+=======
+version = "3.0.4"
+>>>>>>> 3c2e8fcfe1c6685759a8397cd70fb5f232106e09
 description = "Python parsing module"
 category = "main"
 optional = false
@@ -294,7 +310,8 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5a971e96bdbe254c9e99de56be3de626f875d09ff760dfdcdf36c2a3e86a1f16"
+content-hash = "36039849bdd18399d15a3f77003c70964322d8c1473d0f07c9449accde04ae58"
+
 
 [metadata.files]
 atomicwrites = [
@@ -314,8 +331,13 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 dfa = [
+<<<<<<< HEAD
     {file = "dfa-3.0.1-py3-none-any.whl", hash = "sha256:0ed529bb25ffa4c71e763ef2bc5e60e9b7b29b579ce0869fa15e7a473c378372"},
     {file = "dfa-3.0.1.tar.gz", hash = "sha256:2fc77e1efcb705ddb620676aa43435042dfc6554bca39a900c85125c5d0f248a"},
+=======
+    {file = "dfa-4.0.0-py3-none-any.whl", hash = "sha256:7a69d585ea148447a80fa97d5208939e76e6a0c6f69c8e7bcb1f4422cda6a244"},
+    {file = "dfa-4.0.0.tar.gz", hash = "sha256:93903e88a42d8df2c5c5f3e04786522459d20c46294c972a4e017d702aa6b5a2"},
+>>>>>>> 3c2e8fcfe1c6685759a8397cd70fb5f232106e09
 ]
 execnet = [
     {file = "execnet-1.9.0-py2.py3-none-any.whl", hash = "sha256:a295f7cc774947aac58dde7fdc85f4aa00c42adf5d8f5468fc630c1acf30a142"},
@@ -341,6 +363,10 @@ mccabe = [
     {file = "mccabe-0.6.1-py2.py3-none-any.whl", hash = "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42"},
     {file = "mccabe-0.6.1.tar.gz", hash = "sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"},
 ]
+more-itertools = [
+    {file = "more-itertools-8.12.0.tar.gz", hash = "sha256:7dc6ad46f05f545f900dd59e8dfb4e84a4827b97b3cfecb175ea0c7d247f6064"},
+    {file = "more_itertools-8.12.0-py3-none-any.whl", hash = "sha256:43e6dd9942dffd72661a2c4ef383ad7da1e6a3e968a927ad7a6083ab410a688b"},
+]
 networkx = [
     {file = "networkx-2.6.3-py3-none-any.whl", hash = "sha256:80b6b89c77d1dfb64a4c7854981b60aeea6360ac02c6d4e4913319e0a313abef"},
     {file = "networkx-2.6.3.tar.gz", hash = "sha256:c0946ed31d71f1b732b5aaa6da5a0388a345019af232ce2f49c766e2d6795c51"},
@@ -354,8 +380,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 py = [
-    {file = "py-1.10.0-py2.py3-none-any.whl", hash = "sha256:3b80836aa6d1feeaa108e046da6423ab8f6ceda6468545ae8d02d9d58d18818a"},
-    {file = "py-1.10.0.tar.gz", hash = "sha256:21b81bda15b66ef5e1a777a21c4dcd9c20ad3efd0b3f817e7a809035269e1bd3"},
+    {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
+    {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
 ]
 pycodestyle = [
     {file = "pycodestyle-2.8.0-py2.py3-none-any.whl", hash = "sha256:720f8b39dde8b293825e7ff02c475f3077124006db4f440dcbc9a20b76548a20"},
@@ -370,8 +396,13 @@ pyflakes = [
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
 ]
 pyparsing = [
+<<<<<<< HEAD
     {file = "pyparsing-3.0.3-py3-none-any.whl", hash = "sha256:f8d3fe9fc404576c5164f0f0c4e382c96b85265e023c409c43d48f65da9d60d0"},
     {file = "pyparsing-3.0.3.tar.gz", hash = "sha256:9e3511118010f112a4b4b435ae50e1eaa610cda191acb9e421d60cf5fde83455"},
+=======
+    {file = "pyparsing-3.0.4-py3-none-any.whl", hash = "sha256:c0a7dfcd26825bd4453574c4e7ad04aa095975ce54d04f738fe3a8350fbd223a"},
+    {file = "pyparsing-3.0.4.tar.gz", hash = "sha256:e0df773d7fa2240322daae7805626dfc5f2d5effb34e1a7be2702c99cfb9f6b1"},
+>>>>>>> 3c2e8fcfe1c6685759a8397cd70fb5f232106e09
 ]
 pytest = [
     {file = "pytest-6.2.5-py3-none-any.whl", hash = "sha256:7310f8d27bc79ced999e760ca304d69f6ba6c6649c0b60fb0e04a4a77cacc134"},
