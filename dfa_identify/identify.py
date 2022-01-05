@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import groupby
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
@@ -22,6 +22,8 @@ from dfa_identify.encoding import (
 def find_dfas(
         accepting: list[Word],
         rejecting: list[Word],
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        equivalent_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
@@ -78,7 +80,8 @@ def find_dfas(
         return 
 
     apta = APTA.from_examples(
-        accepting=accepting, rejecting=rejecting, alphabet=alphabet
+        accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words,
+                              equivalent_preference_words=equivalent_preference_words, alphabet=alphabet
     )
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
@@ -108,6 +111,8 @@ def find_dfas(
 def find_dfa(
         accepting: list[Word],
         rejecting: list[Word],
+        ordered_preference_words: list[Tuple[Word, Word]] = None,
+        equivalent_preference_words: list[Tuple[Word, Word]] = None,
         solver_fact=Glucose4,
         sym_mode: SymMode = "bfs",
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
@@ -137,7 +142,8 @@ def find_dfa(
       indicating that no DFA exists.
     """
     all_dfas = find_dfas(
-        accepting, rejecting, solver_fact, sym_mode, extra_clauses, bounds,
+        accepting, rejecting, ordered_preference_words, equivalent_preference_words,
+        solver_fact, sym_mode, extra_clauses, bounds,
         order_by_stutter, alphabet
     )
     return next(all_dfas, None)

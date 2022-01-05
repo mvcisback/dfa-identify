@@ -4,7 +4,7 @@ See Heule, "Exact DFA Identification Using SAT Solve" for details.
 """
 from __future__ import annotations
 from itertools import chain, combinations
-from typing import Any, Iterable
+from typing import Any, Iterable, Tuple
 
 import attr
 import networkx as nx
@@ -27,6 +27,8 @@ class APTA:
     """Augmented Prefix Tree Acceptor."""
     tree: nx.DiGraph
     alphabet: bidict  # Mapping from token to int.
+    ord_prefs: set[Tuple[Node, Node]]  # MemReP 'ordered' preferences (less_preferred_word, more_preferred_word)
+    eq_prefs: set[Tuple[Node, Node]]  # MemReP 'equivalent' preferences (equiv_word_1, equiv_word_2)
 
     @property
     def nodes(self) -> Iterable[Node]:
@@ -45,14 +47,30 @@ class APTA:
         nodes = self.nodes(data=True)
         return {n for n, d in nodes if not d.get('label', True)}
 
+    @property
+    def ordered_preferences(self) -> set[Tuple[Node, Node]]:
+        return self.ord_prefs
+
+    @property
+    def equivalent_preferences(self) -> set[Tuple[Node, Node]]:
+        return self.eq_prefs
+
     @staticmethod
     def from_examples(
             accepting: list[Word],
             rejecting: list[Word],
+            ordered_preference_words: list[Tuple[Word, Word]] = None,
+            equivalent_preference_words: list[Tuple[Word, Word]] = None,
             alphabet: frozenset = None) -> APTA:
+        # If preference tuples weren't provided, initialize them as empty lists
+        if ordered_preference_words is None:
+            ordered_preference_words = []
+        if equivalent_preference_words is None:
+            equivalent_preference_words = []
         """Return Augmented Prefix Tree Automata for accepting, rejecting."""
         # Create prefix tree.
-        tree, root = nx.prefix_tree(chain(accepting, rejecting)), 0
+        tree, root = nx.prefix_tree(chain(accepting, rejecting, list(chain(*ordered_preference_words)),
+                                    list(chain(*equivalent_preference_words)))), 0
         tree.remove_node(-1)  # <-- sink node added by nx.
 
         def access(word: Word) -> Node:
@@ -65,6 +83,16 @@ class APTA:
         for label, words in [(True, accepting), (False, rejecting)]:
             for word in words:
                 tree.nodes[access(word)]['label'] = label
+
+        # Build the ordered preferences tuple set.
+        ordered_preference_nodes = set()
+        for (word_one, word_two) in ordered_preference_words:
+            ordered_preference_nodes.add((access(word_one), access(word_two)))
+
+        # Build the incomparable preference tuple set.
+        equivalent_preference_nodes = set()
+        for (word_one, word_two) in equivalent_preference_words:
+            equivalent_preference_nodes.add((access(word_one), access(word_two)))
 
         # Label nodes with integers. With root = 0.
         relabels = {n: i + 1 for i, n in enumerate(set(tree.nodes) - {root})}
@@ -91,7 +119,7 @@ class APTA:
 
         alphabet = bidict(enumerate(alphabet)).inv
 
-        return APTA(tree, alphabet)
+        return APTA(tree, alphabet, ordered_preference_nodes, equivalent_preference_nodes)
 
     def consistency_graph(self) -> nx.Graph:
         """Return consistency graph for APTA via repeated DFS."""

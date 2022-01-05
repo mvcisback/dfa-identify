@@ -162,6 +162,22 @@ def test_order_by_stutter():
         assert set(ordered_counts) == set(unordered_counts)
         assert ordered == sorted(ordered, key=non_stutter_count)
 
+def test_identify_preferences():
+    accepting = ['a', 'abaa', 'bb']
+    rejecting = ['abb', 'b']
+
+    ordered_preference_words = [("bb", "aba"), ("ab", "b"), ("b", "a")]
+    equiv_preference_words = [("abb", "abbb")]
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
+                      ,equivalent_preference_words=equiv_preference_words)
+    true_accepting = ['a', 'abaa', 'bb', "aba"]
+    true_rejecting = ["abb", "b", "abbb", "ab"]
+    for x in true_accepting:
+        assert my_dfa.label(x)
+
+    for x in true_rejecting:
+        assert not my_dfa.label(x)
+
 
 def test_empty_examples():
     with pytest.raises(ValueError):
