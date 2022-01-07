@@ -101,7 +101,6 @@ class Codec:
     n_rejecting: int
     n_ordered: int
     n_equivalent: int
-    error_variables: Iterable[int]
     sym_mode: SymMode
 
     def __attrs_post_init__(self):
@@ -119,15 +118,17 @@ class Codec:
         ))
         object.__setattr__(self, "offsets", tuple([0] + fn.lsums(self.counts)))
 
+    @property
+    def error_vars(self):
+        return list(range(self.offsets[3] + 1, self.offsets[7] + 1))
+
     @staticmethod
     def from_apta(apta: APTA,
                   n_colors: int = 0,
                   sym_mode: SymMode = None) -> Codec:
-        error_vars = list(range(len(apta.nodes) + n_colors + len(apta.alphabet) + 1,
-                                len(apta.accepting) + len(apta.rejecting) + len(apta.ordered_preferences) + len(apta.equivalent_preferences) + 1))
         return Codec(len(apta.nodes), n_colors, len(apta.alphabet), len(apta.accepting),
                      len(apta.rejecting), len(apta.ordered_preferences),
-                     len(apta.equivalent_preferences), error_vars, sym_mode)
+                     len(apta.equivalent_preferences), sym_mode)
 
     @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
@@ -202,13 +203,17 @@ class Codec:
             token = tmp // self.n_colors
             return ParentRelationVar(color1, color2, token, true)
         elif idx < self.offsets[4]:
-            return AcceptingIncVar(idx, true)
+            observation_num = idx - self.offsets[3]
+            return AcceptingIncVar(observation_num, true)
         elif idx < self.offsets[5]:
-            return RejectingIncVar(idx, true)
+            observation_num = idx - self.offsets[4]
+            return RejectingIncVar(observation_num, true)
         elif idx < self.offsets[6]:
-            return OrderedIncVar(idx, true)
+            observation_num = idx - self.offsets[5]
+            return OrderedIncVar(observation_num, true)
         elif idx < self.offsets[7]:
-            return EquivalentIncVar(idx, true)
+            observation_num = idx - self.offsets[6]
+            return EquivalentIncVar(observation_num, true)
 
         return AuxillaryVar(idx)
 

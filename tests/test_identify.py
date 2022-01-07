@@ -3,7 +3,7 @@ import pytest
 import dfa
 from more_itertools import take
 
-from dfa_identify import find_dfa, find_dfas
+from dfa_identify import find_dfa, find_dfas, InconsistencyException
 
 
 def test_identify():
@@ -75,9 +75,12 @@ def test_enumerate():
 def test_overlapping_examples():
     pos = [[False, True]]
     neg = [[False], [False, True]]
-    my_dfa = find_dfa(accepting=pos, rejecting=neg)
-    assert my_dfa is None or type(my_dfa) == list
-
+    try:
+        my_dfa = find_dfa(accepting=pos, rejecting=neg)
+    except InconsistencyException as ex:
+        print(ex)
+    else:
+        assert my_dfa is None
 
 def test_identify_ns_edges():
     accepting = ['a', 'abaa', 'bb']
@@ -184,10 +187,15 @@ def test_circular_preferences():
 
     ordered_preference_words = [("a", "aba"), ("aba", "b"), ("b", "a")]
     equiv_preference_words = [("abb", "abbb")]
-    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
-                      ,equivalent_preference_words=equiv_preference_words)
-    assert type(my_dfa) == list
-    assert ("b", "a") in my_dfa
+
+    try:
+        my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
+                          , equivalent_preference_words=equiv_preference_words)
+    except InconsistencyException as ex:
+        breakpoint()
+        assert ("b", "a") in ex.incorrect_assumptions or ("aba", "b") in ex.incorrect_assumptions
+    else:
+        assert False
 
 def test_empty_examples():
     with pytest.raises(ValueError):

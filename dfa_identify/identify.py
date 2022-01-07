@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import groupby
-from typing import Optional, Iterable, Tuple
+from typing import Optional, Iterable, Tuple, Dict
 
 from dfa import dict2dfa, DFA
 from pysat.solvers import Glucose4
@@ -22,6 +22,9 @@ from dfa_identify.encoding import (
     EquivalentIncVar
 )
 
+class InconsistencyException(Exception):
+    def __init__(self, incorrect_assumptions: Iterable):
+        self.incorrect_assumptions = incorrect_assumptions
 
 def find_dfas(
         accepting: list[Word],
@@ -93,11 +96,11 @@ def find_dfas(
     errored_example_lits = None
     for codec, clauses in encodings:
         with solver_fact(bootstrap_with=clauses) as solver:
-            if not solver.solve(assumptions=[-1 * n for n in codec.error_variables]):
+            if not solver.solve(assumptions=[-1 * n for n in codec.error_vars]):
                 errored_example_lits = solver.get_core()
                 continue
             if not order_by_stutter:
-                models = solver.enum_models()
+                models = solver.enum_models(assumptions=[-1 * n for n in codec.error_vars])
                 yield from (extract_dfa(codec, apta, m) for m in models)
                 if allow_unminimized:
                     continue
@@ -120,7 +123,7 @@ def find_dfas(
     for example_lit in errored_example_lits:
         error_var = codec.decode(example_lit)
         errored_examples.append(var_type_to_observation[type(error_var)][error_var.observation_number])
-    return errored_examples
+    raise InconsistencyException(errored_examples)
 
 def find_dfa(
         accepting: list[Word],
@@ -239,9 +242,9 @@ def order_models_by_stutter(
 
         with solver_fact(bootstrap_with=clauses) as solver:
             solver.append_formula(formula, no_return=True)
-            if not solver.solve():
+            if not solver.solve(assumptions=[-1 * n for n in codec.error_vars]):
                 return
-            yield from solver.enum_models()
+            yield from solver.enum_models(assumptions=[-1 * n for n in codec.error_vars])
 
     candidate_bound = non_stutter_count(model)  # Candidate upper bound.
     hi = candidate_bound     # Also upper bounds lower bound.
