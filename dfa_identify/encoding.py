@@ -303,9 +303,9 @@ def onehot_parent_relation_clauses(codec: Codec) -> Clauses:
 def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
-        yield from ([-codec.accepting_inconsistency_var(idx),
+        yield from ([codec.accepting_inconsistency_var(idx),
                      -codec.color_node(n, c), lit] for idx, n in enumerate(apta.accepting))
-        yield from ([-codec.rejecting_inconsistency_var(idx),
+        yield from ([codec.rejecting_inconsistency_var(idx),
                      -codec.color_node(n, c), -lit] for idx, n in enumerate(apta.rejecting))
 
 def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
@@ -315,16 +315,16 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
         for c2 in range(codec.n_colors):
             more_pref_color_lit = codec.color_accepting(c2)
             # acceptance on LHS leads to acceptance on RHS, rejection on RHS leads to rejection on LHS
-            yield from ([-codec.ordered_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+            yield from ([codec.ordered_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
                          more_pref_color_lit, -less_pref_color_lit]
                         for idx, (nl, np) in enumerate(apta.ordered_preferences))
 
             # encode the equality constraints on incomparable preferences
             # for either accepting or rejecting colors, these clauses should encode equality
-            yield from ([-codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+            yield from ([codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
                          -less_pref_color_lit, more_pref_color_lit]
                         for idx, (nl, np) in enumerate(apta.equivalent_preferences))
-            yield from ([-codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+            yield from ([codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
                          less_pref_color_lit, -more_pref_color_lit]
                         for idx, (nl, np) in enumerate(apta.equivalent_preferences))
 

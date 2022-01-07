@@ -93,8 +93,7 @@ def find_dfas(
     errored_example_lits = None
     for codec, clauses in encodings:
         with solver_fact(bootstrap_with=clauses) as solver:
-            if not solver.solve():
-                solver.solve(assumptions=[-1 * n for n in codec.error_variables])
+            if not solver.solve(assumptions=[-1 * n for n in codec.error_variables]):
                 errored_example_lits = solver.get_core()
                 continue
             if not order_by_stutter:
