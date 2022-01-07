@@ -68,8 +68,28 @@ class ParentRelationVar:
     token: int
     true: bool
 
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class AcceptingIncVar:
+    observation_number: int
+    true: bool
 
-Var = Union[ColorAcceptingVar, ColorNodeVar, ParentRelationVar, AuxillaryVar]
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class RejectingIncVar:
+    observation_number: int
+    true: bool
+
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class OrderedIncVar:
+    observation_number: int
+    true: bool
+
+@attr.s(auto_detect=True, auto_attribs=True, frozen=True)
+class EquivalentIncVar:
+    observation_number: int
+    true: bool
+
+Var = Union[ColorAcceptingVar, ColorNodeVar, ParentRelationVar, AuxillaryVar,
+            AcceptingIncVar, RejectingIncVar, OrderedIncVar, EquivalentIncVar]
 
 
 @attr.s(auto_detect=True, auto_attribs=True, frozen=True)
@@ -77,6 +97,11 @@ class Codec:
     n_nodes: int
     n_colors: int
     n_tokens: int
+    n_accepting: int
+    n_rejecting: int
+    n_ordered: int
+    n_equivalent: int
+    error_variables: Iterable[int]
     sym_mode: SymMode
 
     def __attrs_post_init__(self):
@@ -84,6 +109,10 @@ class Codec:
             self.n_colors,                                    # z
             self.n_colors * self.n_nodes,                     # x
             self.n_tokens * self.n_colors * self.n_colors,    # y
+            self.n_accepting,                                 # a
+            self.n_rejecting,                                 # r
+            self.n_ordered,                                   # o
+            self.n_equivalent,                                # e
             (self.n_colors * (self.n_colors - 1)) // 2,       # p
             (self.n_colors * (self.n_colors - 1)) // 2,       # t
             (self.n_colors - 1) * self.n_tokens,              # m
@@ -94,7 +123,11 @@ class Codec:
     def from_apta(apta: APTA,
                   n_colors: int = 0,
                   sym_mode: SymMode = None) -> Codec:
-        return Codec(len(apta.nodes), n_colors, len(apta.alphabet), sym_mode)
+        error_vars = list(range(len(apta.nodes) + n_colors + len(apta.alphabet) + 1,
+                                len(apta.accepting) + len(apta.rejecting) + len(apta.ordered_preferences) + len(apta.equivalent_preferences) + 1))
+        return Codec(len(apta.nodes), n_colors, len(apta.alphabet), len(apta.accepting),
+                     len(apta.rejecting), len(apta.ordered_preferences),
+                     len(apta.equivalent_preferences), error_vars, sym_mode)
 
     @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
@@ -113,27 +146,46 @@ class Codec:
         b = a**2
         return 1 + color1 + a * color2 + b * token
 
-    # --------------------- BFS Sym_Mode Only ---------------------------
+    # -------------------------------------------------------------------
+
     @encoder(offset=3)
+    def accepting_inconsistency_var(self, accepting_idx: int) -> int:
+        return 1 + accepting_idx
+
+    @encoder(offset=4)
+    def rejecting_inconsistency_var(self, rejecting_idx: int) -> int:
+        return 1 + rejecting_idx
+
+    @encoder(offset=5)
+    def ordered_inconsistency_var(self, ordered_idx: int) -> int:
+        return 1 + ordered_idx
+
+    @encoder(offset=6)
+    def equivalent_inconsistency_var(self, equivalent_idx: int) -> int:
+        return 1 + equivalent_idx
+    # -------------------------------------------------------------------
+
+    # --------------------- BFS Sym_Mode Only ---------------------------
+    @encoder(offset=7)
     def enumeration_parent(self, color1: int, color2: int) -> int:
         """ Literature refers to these variables as p
         Note: here we use p_{i,j} rather than p_{j,i} """
         assert (color1 < color2), "color1 must be smaller than color2"
         return 1 + (((color2) * (color2 - 1)) // 2) + color1
 
-    @encoder(offset=4)
+    @encoder(offset=8)
     def transition_relation(self, color1: int, color2: int) -> int:
         """ Literature refers to these variables as t """
         assert (color1 < color2), "color1 must be smaller than color2"
         return 1 + (((color2) * (color2 - 1)) // 2) + color1
 
-    @encoder(offset=5)
+    @encoder(offset=9)
     def enumeration_label(self, token: Any, color: int) -> int:
         """ Literature refers to these variables as m """
         assert color > 0
         return 1 + self.n_tokens * (color - 1) + token
 
-    # -------------------------------------------------------------------
+
 
     def decode(self, lit: int) -> Var:
         idx = abs(lit) - 1
@@ -149,6 +201,14 @@ class Codec:
             color2 = tmp % self.n_colors
             token = tmp // self.n_colors
             return ParentRelationVar(color1, color2, token, true)
+        elif idx < self.offsets[4]:
+            return AcceptingIncVar(idx, true)
+        elif idx < self.offsets[5]:
+            return RejectingIncVar(idx, true)
+        elif idx < self.offsets[6]:
+            return OrderedIncVar(idx, true)
+        elif idx < self.offsets[7]:
+            return EquivalentIncVar(idx, true)
 
         return AuxillaryVar(idx)
 
@@ -243,8 +303,10 @@ def onehot_parent_relation_clauses(codec: Codec) -> Clauses:
 def partition_by_accepting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
-        yield from ([-codec.color_node(n, c), lit] for n in apta.accepting)
-        yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
+        yield from ([-codec.accepting_inconsistency_var(idx),
+                     -codec.color_node(n, c), lit] for idx, n in enumerate(apta.accepting))
+        yield from ([-codec.rejecting_inconsistency_var(idx),
+                     -codec.color_node(n, c), -lit] for idx, n in enumerate(apta.rejecting))
 
 def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
@@ -253,15 +315,18 @@ def preference_clauses(codec: Codec, apta: APTA) -> Clauses:
         for c2 in range(codec.n_colors):
             more_pref_color_lit = codec.color_accepting(c2)
             # acceptance on LHS leads to acceptance on RHS, rejection on RHS leads to rejection on LHS
-            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), more_pref_color_lit, -less_pref_color_lit]
-                        for nl, np in apta.ordered_preferences)
+            yield from ([-codec.ordered_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+                         more_pref_color_lit, -less_pref_color_lit]
+                        for idx, (nl, np) in enumerate(apta.ordered_preferences))
 
             # encode the equality constraints on incomparable preferences
             # for either accepting or rejecting colors, these clauses should encode equality
-            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), -less_pref_color_lit, more_pref_color_lit]
-                        for nl, np in apta.equivalent_preferences)
-            yield from ([-codec.color_node(np, c2), -codec.color_node(nl, c), less_pref_color_lit, -more_pref_color_lit]
-                        for nl, np in apta.equivalent_preferences)
+            yield from ([-codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+                         -less_pref_color_lit, more_pref_color_lit]
+                        for idx, (nl, np) in enumerate(apta.equivalent_preferences))
+            yield from ([-codec.equivalent_inconsistency_var(idx), -codec.color_node(np, c2), -codec.color_node(nl, c),
+                         less_pref_color_lit, -more_pref_color_lit]
+                        for idx, (nl, np) in enumerate(apta.equivalent_preferences))
 
 def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
     colors = range(codec.n_colors)

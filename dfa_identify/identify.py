@@ -15,7 +15,11 @@ from dfa_identify.encoding import Bounds, ExtraClauseGenerator
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
-    ParentRelationVar
+    ParentRelationVar,
+    AcceptingIncVar,
+    RejectingIncVar,
+    OrderedIncVar,
+    EquivalentIncVar
 )
 
 
@@ -86,10 +90,12 @@ def find_dfas(
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
         extra_clauses=extra_clauses, bounds=bounds)
-
+    errored_example_lits = None
     for codec, clauses in encodings:
         with solver_fact(bootstrap_with=clauses) as solver:
             if not solver.solve():
+                solver.solve(assumptions=[-1 * n for n in codec.error_variables])
+                errored_example_lits = solver.get_core()
                 continue
             if not order_by_stutter:
                 models = solver.enum_models()
@@ -106,7 +112,16 @@ def find_dfas(
         if allow_unminimized:
             continue
         return
-
+    # from here, we pattern match the unsat core.
+    assert errored_example_lits is not None
+    var_type_to_observation = {AcceptingIncVar: accepting, RejectingIncVar: rejecting,
+                               OrderedIncVar: ordered_preference_words,
+                               EquivalentIncVar: equivalent_preference_words}
+    errored_examples = []
+    for example_lit in errored_example_lits:
+        error_var = codec.decode(example_lit)
+        errored_examples.append(var_type_to_observation[type(error_var)][error_var.observation_number])
+    return errored_examples
 
 def find_dfa(
         accepting: list[Word],

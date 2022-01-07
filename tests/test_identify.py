@@ -76,7 +76,7 @@ def test_overlapping_examples():
     pos = [[False, True]]
     neg = [[False], [False, True]]
     my_dfa = find_dfa(accepting=pos, rejecting=neg)
-    assert my_dfa is None
+    assert my_dfa is None or type(my_dfa) == list
 
 
 def test_identify_ns_edges():
@@ -178,6 +178,16 @@ def test_identify_preferences():
     for x in true_rejecting:
         assert not my_dfa.label(x)
 
+def test_circular_preferences():
+    accepting = ['a', 'abaa', 'bb']
+    rejecting = ['abb', 'b']
+
+    ordered_preference_words = [("a", "aba"), ("aba", "b"), ("b", "a")]
+    equiv_preference_words = [("abb", "abbb")]
+    my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
+                      ,equivalent_preference_words=equiv_preference_words)
+    assert type(my_dfa) == list
+    assert ("b", "a") in my_dfa
 
 def test_empty_examples():
     with pytest.raises(ValueError):
