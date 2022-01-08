@@ -192,7 +192,6 @@ def test_circular_preferences():
         my_dfa = find_dfa(accepting=accepting, rejecting=rejecting, ordered_preference_words=ordered_preference_words
                           , equivalent_preference_words=equiv_preference_words)
     except InconsistencyException as ex:
-        breakpoint()
         assert ("b", "a") in ex.incorrect_assumptions or ("aba", "b") in ex.incorrect_assumptions
     else:
         assert False

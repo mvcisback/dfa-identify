@@ -21,7 +21,9 @@ def kind(var):
 
 
 def test_codec():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4,
+                  n_accepting=1, n_rejecting=1, n_ordered=1, n_equivalent=1,
+                  sym_mode="bfs")
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
@@ -69,7 +71,9 @@ def test_codec():
 
 
 def test_symm_break():
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4,
+                  n_accepting=1, n_rejecting=1, n_ordered=1, n_equivalent=1,
+                  sym_mode="bfs")
     assert kind(codec.decode(1)) == 'color_accepting'
     assert kind(codec.decode(3)) == 'color_accepting'
     assert kind(codec.decode(4)) == 'color_node'
@@ -86,11 +90,11 @@ def test_symm_break():
     assert len(t) == 3
     assert len(m) == 8
 
-    for i in range(70, 72):
+    for i in range(74, 76):
         assert i in p
-    for i in range(73, 75):
+    for i in range(77, 79):
         assert i in t
-    for i in range(76, 83):
+    for i in range(80, 87):
         assert i in m
 
 
@@ -110,7 +114,9 @@ def test_encode_dfa_id():
 
 def test_codec_errors():
     """Check that codec performs checks on token/colors being within range."""
-    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4, sym_mode="bfs")
+    codec = Codec(n_nodes=10, n_colors=3, n_tokens=4,
+                  n_accepting=1, n_rejecting=1, n_ordered=1, n_equivalent=1,
+                  sym_mode="bfs")
     tests = [
         (codec.color_accepting, (-1,)),
         (codec.color_accepting, (3,)),
