@@ -213,7 +213,7 @@ def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
     )
 
 
-__all__ = ['DFA', 'find_dfas', 'find_dfa', 'extract_dfa']
+__all__ = ['DFA', 'find_dfas', 'find_dfa', 'extract_dfa', 'InconsistencyException']
 
 
 def order_models_by_stutter(
