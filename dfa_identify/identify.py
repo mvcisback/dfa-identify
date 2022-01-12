@@ -69,7 +69,8 @@ def find_dfas(
     rejecting = list(map(tuple, rejecting))
 
     if set(accepting) & set(rejecting):
-        return
+        errored_examples = list(set(accepting).intersection(set(rejecting)))
+        raise InconsistencyException(errored_examples)
     elif len(accepting) == len(rejecting) == 0:
         if not alphabet:
             raise ValueError('Need examples or an alphabet!')
