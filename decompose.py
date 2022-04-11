@@ -2,10 +2,10 @@ from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
 from pysat.solvers import Glucose4
 from dfa_identify.graphs import Word, APTA
 from dfa_identify.encoding import Bounds, ExtraClauseGenerator, Clauses
-from dfa_identify.identify import extract_dfa
+from dfa_identify.identify import extract_dfa, find_dfas
 from typing import Optional, Iterable
-from dfa import dict2dfa, DFA 
-from dfa.utils import find_equiv_counterexample
+from dfa import dict2dfa, DFA, draw
+from dfa.utils import find_equiv_counterexample, minimize
 
 import itertools
 
@@ -40,31 +40,9 @@ def remove_rejecting_clauses(encodings, apta):
         for clause in clauses:
             if clause not in rejecting_clauses:
                 new_clauses.append(clause)
-
         yield codec, new_clauses
 
 def add_new_rejecting_clause(clauses, codecs, offset_list, apta):
-    new_rejecting_clauses = {}
-    for codec, offset in zip(codecs, offset_list):
-        rejecting_clauses = list(partition_by_rejecting_clauses(codec, apta))
-        rejecting_clauses = offset_clauses(rejecting_clauses, offset)
-        for i, rejecting_clause in enumerate(rejecting_clauses):
-            if i >= len(new_rejecting_clauses):
-                new_rejecting_clauses.append([])
-            new_rejecting_clauses[i].extend(rejecting_clause)
-
-    clauses.extend(new_rejecting_clauses)
-    return clauses
-
-def add_new_rejecting_clause(clauses, codecs, offset_list, apta):
-    # new_rejecting_clauses = {}
-    # for sub_dfa, codec, offset in enumerate(zip(codecs, offset_list)):
-    #     for c in range(codec.n_colors):
-    #         lit = codec.color_accepting(c)
-    #         for v in apta.rejecting:
-    #             # (codec, v, c) : clause
-    #             clause = [-codec.color_node(v, c), -lit]
-
     color_sizes = [range(codec.n_colors) for codec in codecs]
     for v in apta.rejecting:
         for prod in itertools.product(*color_sizes):
@@ -78,19 +56,7 @@ def add_new_rejecting_clause(clauses, codecs, offset_list, apta):
                 offset_clause = offset_clauses([clause], offset_amount)[0]
                 new_rejecting_clause.extend(offset_clause)
             clauses.append(new_rejecting_clause)
-
-
-        # rejecting_clauses = list(partition_by_rejecting_clauses(codec, apta))
-        # rejecting_clauses = offset_clauses(rejecting_clauses, offset)
-        # for i, rejecting_clause in enumerate(rejecting_clauses):
-        #     if i >= len(new_rejecting_clauses):
-        #         new_rejecting_clauses.append([])
-        #     new_rejecting_clauses[i].extend(rejecting_clause)
-
-    # clauses.extend(new_rejecting_clauses)
-
     return clauses
-
 
 def extract_dfas(codecs, offset_list, apta, m):
     offset_list = list(offset_list)
@@ -206,18 +172,38 @@ def find_dfa_decompositions(
 
 if __name__=="__main__":
 
-    accepting = ['a', 'abaa', 'bb']
-    rejecting = ['abb', 'b']
-    num_dfas = 3
-    dfa_sizes = [4,4,4]
+    accepting = ['abcd', 'acbd', 'acdb', 'cdab', 'cadb', 'cabd']
+    rejecting = []
+
+    for i in range(5):
+        for j in itertools.product('abcd', repeat=i):
+            trace = ''.join(j)
+            if trace not in accepting:
+                rejecting.append(trace)
+    print(accepting)
+    print(rejecting)
+    # accepting = ['y', 'yy', 'oy', 'boy']
+    # rejecting = ['r', 'b', 'o', 'or', 'br', 'yr', 'rr', 'by']
+    num_dfas = 2
+    dfa_sizes = [3, 3]
         
     my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes)
-
     for my_dfas in my_dfas_gen:
         print(my_dfas)
+        count = 0
         for my_dfa in my_dfas:
+            draw.write_dot(my_dfa, "temp" + str(count) + ".dot")
             assert all(my_dfa.label(x) for x in accepting)
-        for my_dfa in my_dfas:
-            print([my_dfa.label(x) for x in rejecting])
+            count += 1
         for x in rejecting:
             assert any(not my_dfa.label(x) for my_dfa in my_dfas)
+        input()
+
+    # my_dfa_gen = find_dfas(accepting, rejecting)
+
+    # for my_dfa in my_dfa_gen:
+    #     print(my_dfa)
+    #     draw.write_dot(my_dfa, "temp.dot")
+    #     assert all(my_dfa.label(x) for x in accepting)
+    #     assert all(not my_dfa.label(x) for x in rejecting)
+    #     input()
