@@ -202,7 +202,7 @@ def encode_dfa_id(apta, codec, cgraph, clique=None):
     yield from partition_by_accepting_clauses(codec, apta)      # 2
     yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
     yield from onehot_parent_relation_clauses(codec)            # 4, 6
-    yield from determination_conflicts(codec, cgraph)           # 8
+    yield from determination_conflicts(codec, cgraph, apta.accepting, apta.rejecting)           # 8
     if codec.sym_mode == "clique":
         yield from symmetry_breaking(codec, clique)
     elif codec.sym_mode == "bfs":
@@ -263,10 +263,14 @@ def colors_parent_rel_coupling_clauses(codec: Codec, apta: APTA) -> Clauses:
         yield [-parent_color, node_color, -parent_rel]  # 7
 
 
-def determination_conflicts(codec: Codec, cgraph: nx.Graph) -> Clauses:
+def determination_conflicts(codec: Codec, cgraph: nx.Graph, accepting=[], rejecting=[]) -> Clauses:
     colors = range(codec.n_colors)
     for (n1, n2), c in product(cgraph.edges, colors):
-        yield [-codec.color_node(n1, c), -codec.color_node(n2, c)]
+        if len(accepting) > 0 and len(rejecting) > 0:
+            if (n1 in accepting and n2 in rejecting) or (n1 in rejecting and n2 in accepting):
+                yield [-codec.color_node(n1, c), -codec.color_node(n2, c), codec.color_accepting(c)]
+        else:
+            yield [-codec.color_node(n1, c), -codec.color_node(n2, c)]
 
 
 def symmetry_breaking(codec: Codec, clique: Nodes) -> Clauses:
