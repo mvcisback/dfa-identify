@@ -175,7 +175,7 @@ def dfa_id_encodings(
     # Tighten lower bound.
     if low is None:
         low = 1
-    low = max(low, len(clique))
+    # low = max(low, len(clique))
 
     if (low > max_needed) and ((high is None) or (low < high)):
         high = low  # Will find something at low if one exists.

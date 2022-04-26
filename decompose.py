@@ -7,7 +7,82 @@ from typing import Optional, Iterable
 from dfa import dict2dfa, DFA, draw
 from dfa.utils import find_equiv_counterexample, minimize
 
+from pysat.card import CardEnc
+from dfa_identify.encoding import ParentRelationVar
+
 import itertools
+
+def order_models_by_stutter(
+        solver_fact,
+        codecs: list[Codec],
+        offset_list: list[int],
+        clauses: list[list[int]],
+        model: list[int],
+) -> Iterable[DFA]:
+    top_id = codecs[-1].offsets[-1] + offset_list[-1]
+
+    # Compute parent relation variables that don't stutter.
+    codecs_lits = []
+    for codec, offset in zip(codecs, offset_list):
+        lits = []
+        for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
+            par_rel = codec.decode(lit)
+            assert isinstance(par_rel, ParentRelationVar)
+            if par_rel.node_color == par_rel.parent_color:
+                continue
+            lits.append(lit + offset if lit >= 0 else lit - offset)
+        codecs_lits.append(lits)
+
+    # Binary search for min non-stutter using cardinality constraints.
+
+    def non_stutter_count(model) -> int:
+        return [sum(model[x - 1] > 0 for x in lits) for lits in codecs_lits]
+
+    def find_models(bounds: list[int], make_formula):
+        formulas = [make_formula(lits=lits, bound=bound, top_id=top_id) for lits, bound in zip(codecs_lits, bounds)]
+
+        with solver_fact(bootstrap_with=clauses) as solver:
+            for formula in formulas:
+                solver.append_formula(formula, no_return=True)
+            if not solver.solve():
+                return
+            yield from solver.enum_models()
+
+    def find_increment_index(los, his, normalize=True):
+        if normalize:
+            diffs = [(hi - lo) / hi for lo, hi in zip(los, his)]
+        else:
+            diffs = [(hi - lo) for lo, hi in zip(los, his)]
+        max_diff = max(diffs)
+        max_diff_index = diffs.index(max_diff)
+        return max_diff_index
+
+    candidate_bounds = non_stutter_count(model) # Candidate upper bound.
+    his = candidate_bounds # Also upper bounds lower bound.
+    los = [codec.n_colors - 1 for codec in codecs] # Each node needs to be visited.
+    while any([lo < hi for lo, hi in zip(los, his)]):
+        mids = [(lo + hi) // 2 for lo, hi in zip(los, his)]
+        models = find_models(mids, CardEnc.atmost)
+        witness = next(models, None)
+        if witness is not None:
+            his = non_stutter_count(witness)
+            assert all([hi <= mid for hi, mid in zip(his, mids)])
+        else:
+            increment_index = find_increment_index(los, his)
+            los[increment_index] += 1
+
+    # Incrementally emit models with less stutter.
+    naive_bounds = [len(lits) for lits in codecs_lits]
+    bounds = los
+    while any([bound <= naive_bound for bound, naive_bound in zip(bounds, naive_bounds)]):
+        if any([bound > candidate_bound for bound, candidate_bound in zip(bounds, candidate_bounds)]):
+            witness = next(find_models(bounds, CardEnc.atmost), None)
+            if witness is None:
+                break
+            candidate_bounds = non_stutter_count(witness)
+        yield from find_models(bounds, CardEnc.atmost) # For some reason CardEnc.equal does not work here
+        increment_index = find_increment_index(bounds, naive_bounds)
+        bounds[increment_index] += 1
 
 def partition_by_rejecting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
@@ -164,8 +239,8 @@ def find_dfa_decompositions(
         model = solver.get_model()  # Save for analysis below.
 
     # Search for maximally stuttering DFAs.
-    models = order_models_by_stutter(solver_fact, codec, clauses, model)
-    yield from (extract_dfa(codec, apta, m) for m in models)
+    models = order_models_by_stutter(solver_fact, codecs, offset_list, clauses, model)
+    yield from (extract_dfas(codecs, offset_list, apta, m) for m in models)
     if allow_unminimized:
         return
     return
@@ -180,14 +255,14 @@ if __name__=="__main__":
             trace = ''.join(j)
             if trace not in accepting:
                 rejecting.append(trace)
-    print(accepting)
-    print(rejecting)
+    # print(accepting)
+    # print(rejecting)
     # accepting = ['y', 'yy', 'oy', 'boy']
     # rejecting = ['r', 'b', 'o', 'or', 'br', 'yr', 'rr', 'by']
     num_dfas = 2
     dfa_sizes = [3, 3]
         
-    my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes)
+    my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes, order_by_stutter=True)
     for my_dfas in my_dfas_gen:
         print(my_dfas)
         count = 0
