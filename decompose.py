@@ -12,6 +12,8 @@ from dfa_identify.encoding import ParentRelationVar
 
 import itertools
 
+from more_itertools import interleave_longest
+
 def order_models_by_stutter(
         solver_fact,
         codecs: list[Codec],
@@ -149,6 +151,53 @@ def extract_dfas(codecs, offset_list, apta, m):
 
     return sub_dfas
 
+def enumerate_pareto_frontier(
+        accepting: list[Word],
+        rejecting: list[Word],
+        num_dfas: int,
+        min_dfa_sizes: int = 2,
+        solver_fact=Glucose4,
+        sym_mode: SymMode = "bfs",
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),
+        order_by_stutter: bool = False,
+        alphabet: frozenset = None,
+        allow_unminimized: bool = False,
+) -> Iterable[DFA]:
+
+    # TODO explore randomizing the order that new_dfa_sizes are appended
+
+
+    min_dfa_size = [min_dfa_sizes]*num_dfas
+    stack = [min_dfa_size]
+    pareto_frontier = {}
+
+    offset = 0
+    while stack: # while not empty
+        dfa_sizes = stack.pop()
+        dfa_gen = find_dfa_decompositions(accepting,rejecting,num_dfas,dfa_sizes,solver_fact,sym_mode,extra_clauses,\
+                order_by_stutter,alphabet,allow_unminimized)
+        try:
+            # yield the dfa from this generator
+            next_dfa = next(dfa_gen)
+            pareto_frontier[tuple(dfa_sizes)] = dfa_gen
+            yield next_dfa
+        except StopIteration:
+            # add children to stack
+            for i in range(num_dfas):
+                new_dfa_sizes = list(dfa_sizes)
+                new_dfa_sizes[(i+offset)%num_dfas] += 1
+                not_dominated = all(any(new_size < front_size for new_size,front_size in zip(new_dfa_sizes,frontier_sizes)) for frontier_sizes in pareto_frontier.keys())
+
+                # we want to avoid making symmetric solves, so only append the sizes that are ordered in increasing size
+                if not_dominated and all(new_dfa_sizes[i] <= new_dfa_sizes[i+1] for i in range(len(new_dfa_sizes) - 1)):
+                    stack.append(new_dfa_sizes)
+
+            # increase the offset by one at each stage so that we explore DFS in a round robin fashion
+            offset = (offset+1)%num_dfas
+
+    # interleave generators on the pareto frontier until exhausted
+    for dfa_product in interleave_longest(*pareto_frontier.values()):
+        yield dfa_product
 
 def find_dfa_decompositions(
         accepting: list[Word],
@@ -200,13 +249,13 @@ def find_dfa_decompositions(
         # Conjecture empty string label and interleave dfas.
         kwargs = {
             'solver_fact': solver_fact, 'sym_mode': sym_mode,
-            'extra_clauses': extra_clauses, 'bounds': (None, None),
+            'extra_clauses': extra_clauses, 'num_dfas': num_dfas, 'dfa_sizes': dfa_sizes,
             'order_by_stutter': order_by_stutter, 'alphabet': alphabet,
             'allow_unminimized': allow_unminimized,
         }
-        dfas_pos = find_dfas(accepting=[()], rejecting=[  ], **kwargs)
-        dfas_neg = find_dfas(accepting=[  ], rejecting=[()], **kwargs)
-        yield from roundrobin(dfas_pos, dfas_neg)
+        dfas_pos = find_dfa_decompositions(accepting=[()], rejecting=[  ], **kwargs)
+        dfas_neg = find_dfa_decompositions(accepting=[  ], rejecting=[()], **kwargs)
+        yield from interleave_longest(dfas_pos, dfas_neg)
         return 
 
     apta = APTA.from_examples(
@@ -255,14 +304,15 @@ if __name__=="__main__":
             trace = ''.join(j)
             if trace not in accepting:
                 rejecting.append(trace)
-    # print(accepting)
-    # print(rejecting)
+    accepting = []
+    rejecting = []
     # accepting = ['y', 'yy', 'oy', 'boy']
     # rejecting = ['r', 'b', 'o', 'or', 'br', 'yr', 'rr', 'by']
     num_dfas = 2
     dfa_sizes = [3, 3]
         
     my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes, order_by_stutter=True)
+    # my_dfas_gen = enumerate_pareto_frontier(accepting, rejecting, num_dfas, order_by_stutter=True)
     for my_dfas in my_dfas_gen:
         print(my_dfas)
         count = 0

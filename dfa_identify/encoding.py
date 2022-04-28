@@ -177,15 +177,15 @@ def dfa_id_encodings(
         low = 1
     # low = max(low, len(clique))
 
-    if (low > max_needed) and ((high is None) or (low < high)):
-        high = low  # Will find something at low if one exists.
-    elif high is None:
-        high = max_needed
-    else:
-        high = min(high, max_needed)
+    # if (low > max_needed) and ((high is None) or (low < high)):
+    #     high = low  # Will find something at low if one exists.
+    # elif high is None:
+    #     high = max_needed
+    # else:
+    #     high = min(high, max_needed)
 
-    if high < low:
-        raise ValueError('Empty bound range!')
+    # if high < low:
+    #     raise ValueError('Empty bound range!')
 
     for n_colors in range(low, high + 1):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
