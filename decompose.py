@@ -51,8 +51,9 @@ def order_models_by_stutter(
             yield from solver.enum_models()
 
     def find_increment_index(los, his, normalize=True):
+        sign = lambda x: -1 if x < 0 else (1 if x > 0 else 0)
         if normalize:
-            diffs = [(hi - lo) / hi for lo, hi in zip(los, his)]
+            diffs = [(hi - lo) / hi if hi != 0 else sign(hi - lo) * float('inf') for lo, hi in zip(los, his)]
         else:
             diffs = [(hi - lo) for lo, hi in zip(los, his)]
         max_diff = max(diffs)
@@ -71,7 +72,7 @@ def order_models_by_stutter(
             assert all([hi <= mid for hi, mid in zip(his, mids)])
         else:
             increment_index = find_increment_index(los, his)
-            los[increment_index] += 1
+            los[increment_index] = mids[increment_index] + 1
 
     # Incrementally emit models with less stutter.
     naive_bounds = [len(lits) for lits in codecs_lits]
@@ -304,15 +305,13 @@ if __name__=="__main__":
             trace = ''.join(j)
             if trace not in accepting:
                 rejecting.append(trace)
-    accepting = []
-    rejecting = []
     # accepting = ['y', 'yy', 'oy', 'boy']
     # rejecting = ['r', 'b', 'o', 'or', 'br', 'yr', 'rr', 'by']
     num_dfas = 2
     dfa_sizes = [3, 3]
         
-    my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes, order_by_stutter=True)
-    # my_dfas_gen = enumerate_pareto_frontier(accepting, rejecting, num_dfas, order_by_stutter=True)
+    # my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes, order_by_stutter=True)
+    my_dfas_gen = enumerate_pareto_frontier(accepting, rejecting, num_dfas, order_by_stutter=True)
     for my_dfas in my_dfas_gen:
         print(my_dfas)
         count = 0
