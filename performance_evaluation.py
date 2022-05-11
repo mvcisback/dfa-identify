@@ -4,6 +4,8 @@ from dfa import dict2dfa, DFA, draw
 import itertools
 import time
 import signal
+import math
+import random
 
 TIMEOUT_SECONDS = 10 * 60 # Timeout after 10 minutes
 
@@ -13,141 +15,243 @@ class TimeOutException(Exception):
 def alarm_handler(signum, frame):
     raise TimeOutException()
 
-def interleave(strings, upper_bound=None):
-    temps = [strings[0]]
-    for l in strings[1:-1]:
-        for temp in list(temps):
-            interleave_helper(temp, l, '', 0, 0, temps, upper_bound)
-    temps = list(filter(lambda x: len(x) == sum(len(l) for l in strings[:-1]), temps))
-    results = []
-    for temp in temps:
-        interleave_helper(temp, strings[-1], '', 0, 0, results, upper_bound)
-    return results
-
-def interleave_helper(s, t, res, i, j, lis, upper_bound=None):
-    if i == len(s) and j == len(t):
-        lis.append(res)
-        return
-    if i < len(s):
-        if upper_bound is not None and len(lis) < upper_bound:
-            interleave_helper(s, t, res + s[i], i + 1, j, lis, upper_bound)
-        elif upper_bound is None:
-            interleave_helper(s, t, res + s[i], i + 1, j, lis, upper_bound)
-    if j < len(t):
-        if upper_bound is not None and len(lis) < upper_bound:
-            interleave_helper(s, t, res + t[j], i, j + 1, lis, upper_bound)
-        elif upper_bound is None:
-            interleave_helper(s, t, res + t[j], i, j + 1, lis, upper_bound)
-
 def generate_examples(n_tasks: int,
                       n_subtasks: int,
-                      accepting_upper_bound: int,
-                      rejecting_upper_bound: int,
-                      alphabet: str):
-    assert n_tasks > 0
+                      bound: int):
+
+    assert n_tasks > 1
     assert n_subtasks > 1
-    assert accepting_upper_bound > 0
-    assert rejecting_upper_bound > 0
-    assert n_tasks * n_subtasks <= len(alphabet)
-    accepting = []
-    rejecting = []
-    alphabet_head = 0
-    task_symbols = []
+    assert bound % 2 == 0 and bound > 0
+
+    symbol_base = 'x'
+    symbol_counter = 0
+    tasks_symbols = []
+    tasks_symbols_flatten = []
+
     for _ in range(n_tasks):
-        task_symbol = ''
+        task_symbols = []
         for _ in range(n_subtasks):
-            task_symbol += alphabet[alphabet_head]
-            alphabet_head += 1
-        task_symbols.append(task_symbol)
-    for trace in interleave(task_symbols, accepting_upper_bound):
-        accepting.append(trace)
-    rejecting_count = 0
-    for j in itertools.permutations(''.join(task_symbols)):
-        trace = ''.join(j)
-        if trace not in accepting:
-            rejecting.append(trace)
-            rejecting_count += 1
-            if rejecting_count >= rejecting_upper_bound:
-                break
-    return accepting, rejecting
+            task_symbols.append(symbol_base + str(symbol_counter))
+            symbol_counter += 1
+        tasks_symbols.append(task_symbols)
+        tasks_symbols_flatten.extend(task_symbols)
 
-def construct_monolithic_dfa(accepting, rejecting, write_to_dot_file=False):
-    start_time = time.time()
-    my_dfas_gen = find_dfas(accepting, rejecting, order_by_stutter=True)
-    my_dfa = next(my_dfas_gen)
-    end_time = time.time()
-    assert all(my_dfa.label(x) for x in accepting)
-    assert all(not my_dfa.label(x) for x in rejecting)
-    if write_to_dot_file:
-        draw.write_dot(my_dfa, "temp.dot")
+    positive_examples = []
+    while len(positive_examples) < bound // 2:
+        positive_example_heads = [0] * n_tasks
+        trace = []
+        while not all(symbol in trace for symbol in tasks_symbols_flatten):
+            random_head_idx = random.randint(0, n_tasks - 1)
+            trace.append(tasks_symbols[random_head_idx][positive_example_heads[random_head_idx]])
+            positive_example_heads[random_head_idx] += 1
+            positive_example_heads[random_head_idx] %= n_subtasks
+        if trace not in positive_examples:
+            positive_examples.append(trace)
+
+    negative_examples = []
+    while len(negative_examples) < bound // 2:
+        negative_example_heads = [n_subtasks - 1] * n_tasks
+        trace = []
+        while not all(symbol in trace for symbol in tasks_symbols_flatten):
+            random_head_idx = random.randint(0, n_tasks - 1)
+            trace.append(tasks_symbols[random_head_idx][negative_example_heads[random_head_idx]])
+            negative_example_heads[random_head_idx] += n_subtasks - 1
+            negative_example_heads[random_head_idx] %= n_subtasks
+        if trace not in negative_examples:
+            negative_examples.append(trace)
+
+    assert len(positive_examples) == bound // 2 and len(negative_examples) == bound // 2
+
+    return positive_examples, negative_examples
+
+def get_next_solution_and_check(generator, accepting, rejecting, is_monolithic):
+    try:
+        start_time = time.time()
+        result = next(generator)
+        end_time = time.time()
+    except:
+        return None
+    if is_monolithic:
+        assert all(result.label(x) for x in accepting)
+        assert all(not result.label(x) for x in rejecting)
+        # draw.write_dot(result, "temp.dot")
+        # input('Done1')
+    else:
+        for my_dfa in result:
+            assert all(my_dfa.label(x) for x in accepting)
+            # draw.write_dot(my_dfa, "temp.dot")
+            # input('Done2')
+        for x in rejecting:
+            assert any(not my_dfa.label(x) for my_dfa in result)
     return end_time - start_time
 
-def construct_dfa_decompositions(n_dfas, accepting, rejecting, write_to_dot_file=False):
-    start_time = time.time()
-    my_dfas_gen = enumerate_pareto_frontier(accepting, rejecting, n_dfas, order_by_stutter=True)
-    my_dfas = next(my_dfas_gen)
-    end_time = time.time()
-    for my_dfa in my_dfas:
-        assert all(my_dfa.label(x) for x in accepting)
-    for x in rejecting:
-        assert any(not my_dfa.label(x) for my_dfa in my_dfas)
-    if write_to_dot_file:
-        count = 0
-        for my_dfa in my_dfas:
-            draw.write_dot(my_dfa, "temp" + str(count) + ".dot")
-            count += 1
-    return end_time - start_time
+def exp_vary_dfas(seed, n_syms, n_dfas_lower, n_dfas_upper, bound):
+    baseline = {}
+    this_work = {}
 
-baseline = {}
-this_work = {}
+    signal.signal(signal.SIGALRM, alarm_handler)
+    signal.alarm(0)
 
-signal.signal(signal.SIGALRM, alarm_handler)
-signal.alarm(0)
-
-for bound in range(10, 101, 10):
-    for n_syms in range(2, 5):
-        for n_dfas in range(1, 11):
+    for n_dfas in range(n_dfas_lower, n_dfas_upper + 1):
+        try:
+            accepting, rejecting = generate_examples(n_dfas, n_syms, bound)
+            baseline_generator = find_dfas(accepting, rejecting, order_by_stutter=True)
+            signal.alarm(TIMEOUT_SECONDS)
             try:
-                accepting, rejecting = generate_examples(n_dfas, n_syms, bound, bound, "abcdefghijklmnopqrstuvwxyz0123456789@#$%")
-                signal.alarm(TIMEOUT_SECONDS)
-                try:
-                    result = construct_monolithic_dfa(accepting, rejecting)
-                except TimeOutException:
-                    result = None
-                signal.alarm(0)
-                baseline[(bound, n_syms, n_dfas)] = result
-                print('Baseline', (bound, n_syms, n_dfas), baseline[(bound, n_syms, n_dfas)])
-                signal.alarm(TIMEOUT_SECONDS)
-                try:
-                    result = construct_dfa_decompositions(n_dfas, accepting, rejecting)
-                except TimeOutException:
-                    result = None
-                signal.alarm(0)
-                this_work[(bound, n_syms, n_dfas)] = result
-                print('This Work', (bound, n_syms, n_dfas), this_work[(bound, n_syms, n_dfas)])
-            except:
-                signal.alarm(0)
-                pass
-    f = open('baseline_bound_' + str(bound) + '_results.csv', 'w+')
+                result = get_next_solution_and_check(baseline_generator, accepting, rejecting, True)
+            except TimeOutException:
+                result = None
+            signal.alarm(0)
+            baseline[(bound, n_syms, n_dfas)] = result
+            print('Baseline', (bound, n_syms, n_dfas), baseline[(bound, n_syms, n_dfas)])
+            this_work_generator = enumerate_pareto_frontier(accepting, rejecting, n_dfas, order_by_stutter=True)
+            signal.alarm(TIMEOUT_SECONDS)
+            try:
+                result = get_next_solution_and_check(this_work_generator, accepting, rejecting, False)
+            except TimeOutException:
+                result = None
+            signal.alarm(0)
+            this_work[(bound, n_syms, n_dfas)] = result
+            print('This Work', (bound, n_syms, n_dfas), this_work[(bound, n_syms, n_dfas)])
+        except TimeOutException:
+            pass
+        signal.alarm(0)
+
+    f = open('seed' + str(seed) + '_exp_vary_dfas_baseline_' + str(n_syms) + '_' + str(n_dfas_lower) + '_' + str(n_dfas_upper) + '_' + str(bound) + '_results.csv', 'w+')
     f.write('bound,n_syms,n_dfas,time\n')
     for result in baseline:
         f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(baseline[result]) + '\n')
     f.close()
 
-    f = open('this_work_bound_' + str(bound) + '_results.csv', 'w+')
+    f = open('seed' + str(seed) + '_exp_vary_dfas_this_work_' + str(n_syms) + '_' + str(n_dfas_lower) + '_' + str(n_dfas_upper) + '_' + str(bound) + '_results.csv', 'w+')
     f.write('bound,n_syms,n_dfas,time\n')
     for result in this_work:
         f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(this_work[result]) + '\n')
     f.close()
 
-# n_dfas = 4
-# n_syms = 2
-# bound = 100
+def exp_vary_examples(seed, n_syms, n_dfas, bound_lower, bound_upper, step=10):
+    baseline = {}
+    this_work = {}
 
-# accepting, rejecting = generate_examples(n_dfas, n_syms, bound, bound, "abcdefghijklmnopqrstuvwxyz0123456789@#$%")
+    signal.signal(signal.SIGALRM, alarm_handler)
+    signal.alarm(0)
 
-# print(accepting)
-# print(rejecting)
+    for bound in range(bound_lower, bound_upper + 1, step):
+        try:
+            accepting, rejecting = generate_examples(n_dfas, n_syms, bound)
+            baseline_generator = find_dfas(accepting, rejecting, order_by_stutter=True)
+            signal.alarm(TIMEOUT_SECONDS)
+            try:
+                result = get_next_solution_and_check(baseline_generator, accepting, rejecting, True)
+            except TimeOutException:
+                result = None
+            signal.alarm(0)
+            baseline[(bound, n_syms, n_dfas)] = result
+            print('Baseline', (bound, n_syms, n_dfas), baseline[(bound, n_syms, n_dfas)])
+            this_work_generator = enumerate_pareto_frontier(accepting, rejecting, n_dfas, order_by_stutter=True)
+            signal.alarm(TIMEOUT_SECONDS)
+            try:
+                result = get_next_solution_and_check(this_work_generator, accepting, rejecting, False)
+            except TimeOutException:
+                result = None
+            signal.alarm(0)
+            this_work[(bound, n_syms, n_dfas)] = result
+            print('This Work', (bound, n_syms, n_dfas), this_work[(bound, n_syms, n_dfas)])
+        except TimeOutException:
+            pass
+        signal.alarm(0)
 
-# construct_monolithic_dfa(accepting, rejecting, True)
-# construct_dfa_decompositions(n_dfas, accepting, rejecting, True)
+    f = open('seed' + str(seed) + '_exp_vary_examples_baseline_' + str(n_syms) + '_' + str(n_dfas) + '_' + str(bound_lower) + '_' + str(bound_upper) + '_' + str(step) + '_results.csv', 'w+')
+    f.write('bound,n_syms,n_dfas,time\n')
+    for result in baseline:
+        f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(baseline[result]) + '\n')
+    f.close()
+
+    f = open('seed' + str(seed) + '_exp_vary_examples_this_work_' + str(n_syms) + '_' + str(n_dfas) + '_' + str(bound_lower) + '_' + str(bound_upper) + '_' + str(step) + '_results.csv', 'w+')
+    f.write('bound,n_syms,n_dfas,time\n')
+    for result in this_work:
+        f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(this_work[result]) + '\n')
+    f.close()
+
+def exp_vary_solutions(seed, n_syms, n_dfas, bound, solutions=100):
+    baseline = {}
+    this_work = {}
+
+    signal.signal(signal.SIGALRM, alarm_handler)
+    signal.alarm(0)
+
+    accepting, rejecting = generate_examples(n_dfas, n_syms, bound)
+    baseline_generator = find_dfas(accepting, rejecting, order_by_stutter=True)
+    this_work_generator = enumerate_pareto_frontier(accepting, rejecting, n_dfas, order_by_stutter=True)
+    baseline_result = 0
+    this_work_result = 0
+    for solution in range(1, solutions + 1):
+        try:
+            signal.alarm(TIMEOUT_SECONDS)
+            try:
+                baseline_result += get_next_solution_and_check(baseline_generator, accepting, rejecting, True)
+            except TimeOutException:
+                break
+            signal.alarm(0)
+            baseline[(bound, n_syms, n_dfas)] = baseline_result
+            print('Baseline', (bound, n_syms, n_dfas, solution), baseline[(bound, n_syms, n_dfas)])
+            signal.alarm(TIMEOUT_SECONDS)
+            try:
+                this_work_result += get_next_solution_and_check(this_work_generator, accepting, rejecting, False)
+            except TimeOutException:
+                break
+            signal.alarm(0)
+            this_work[(bound, n_syms, n_dfas)] = this_work_result
+            print('This Work', (bound, n_syms, n_dfas, solution), this_work[(bound, n_syms, n_dfas)])
+        except TimeOutException:
+            pass
+        signal.alarm(0)
+
+    f = open('seed' + str(seed) + '_exp_vary_solutions_baseline_' + str(n_syms) + '_' + str(n_dfas) + '_' + str(bound) + '_' + str(solutions) + '_results.csv', 'w+')
+    f.write('bound,n_syms,n_dfas,time\n')
+    for result in baseline:
+        f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(baseline[result]) + '\n')
+    f.close()
+
+    f = open('seed' + str(seed) + '_exp_vary_solutions_this_work_' + str(n_syms) + '_' + str(n_dfas) + '_' + str(bound) + '_' + str(solutions) + '_results.csv', 'w+')
+    f.write('bound,n_syms,n_dfas,time\n')
+    for result in this_work:
+        f.write(str(result[0]) + ',' + str(result[1]) + ',' + str(result[2]) + ',' + str(this_work[result]) + '\n')
+    f.close()
+
+if __name__ == '__main__':
+
+    for seed in range(10):
+
+        random.seed(seed)
+
+        print('Running for seed', seed)
+
+        exp_vary_dfas(seed, 2, 2, 10, 10)
+        exp_vary_dfas(seed, 4, 2, 10, 10)
+        exp_vary_dfas(seed, 8, 2, 10, 10)
+
+        exp_vary_dfas(seed, 2, 2, 10, 100)
+        exp_vary_dfas(seed, 4, 2, 10, 100)
+        exp_vary_dfas(seed, 8, 2, 10, 100)
+
+        exp_vary_examples(seed, 2, 2, 10, 100)
+        exp_vary_examples(seed, 2, 4, 10, 100)
+        exp_vary_examples(seed, 2, 8, 10, 100)
+
+        exp_vary_examples(seed, 4, 2, 10, 100)
+        exp_vary_examples(seed, 4, 4, 10, 100)
+        exp_vary_examples(seed, 4, 8, 10, 100)
+
+        exp_vary_examples(seed, 8, 2, 10, 100)
+        exp_vary_examples(seed, 8, 4, 10, 100)
+        exp_vary_examples(seed, 8, 8, 10, 100)
+
+        exp_vary_solutions(seed, 4, 2, 10, 100)
+        exp_vary_solutions(seed, 4, 4, 10, 100)
+        exp_vary_solutions(seed, 4, 8, 10, 100)
+
+        exp_vary_solutions(seed, 8, 2, 10, 100)
+        exp_vary_solutions(seed, 8, 4, 10, 100)
+        exp_vary_solutions(seed, 8, 8, 10, 100)
+
