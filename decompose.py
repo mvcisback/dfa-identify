@@ -11,6 +11,7 @@ from pysat.card import CardEnc
 from dfa_identify.encoding import ParentRelationVar
 
 import itertools
+from collections import deque
 
 from more_itertools import interleave_longest
 
@@ -165,16 +166,13 @@ def enumerate_pareto_frontier(
         allow_unminimized: bool = False,
 ) -> Iterable[DFA]:
 
-    # TODO explore randomizing the order that new_dfa_sizes are appended
-
-
     min_dfa_size = [min_dfa_sizes]*num_dfas
-    stack = [min_dfa_size]
+    size_q = deque()
+    size_q.append(min_dfa_size)
     pareto_frontier = {}
 
-    offset = 0
-    while stack: # while not empty
-        dfa_sizes = stack.pop()
+    while size_q: # while not empty
+        dfa_sizes = size_q.popleft()
         dfa_gen = find_dfa_decompositions(accepting,rejecting,num_dfas,dfa_sizes,solver_fact,sym_mode,extra_clauses,\
                 order_by_stutter,alphabet,allow_unminimized)
         try:
@@ -183,18 +181,17 @@ def enumerate_pareto_frontier(
             pareto_frontier[tuple(dfa_sizes)] = dfa_gen
             yield next_dfa
         except StopIteration:
-            # add children to stack
+            # add children to queue
             for i in range(num_dfas):
                 new_dfa_sizes = list(dfa_sizes)
-                new_dfa_sizes[(i+offset)%num_dfas] += 1
+                new_dfa_sizes[i] += 1
                 not_dominated = all(any(new_size < front_size for new_size,front_size in zip(new_dfa_sizes,frontier_sizes)) for frontier_sizes in pareto_frontier.keys())
+                nondecreasing = all(new_dfa_sizes[i] <= new_dfa_sizes[i+1] for i in range(len(new_dfa_sizes) - 1))
+                not_in_queue = new_dfa_sizes not in size_q
 
                 # we want to avoid making symmetric solves, so only append the sizes that are ordered in increasing size
-                if not_dominated and all(new_dfa_sizes[i] <= new_dfa_sizes[i+1] for i in range(len(new_dfa_sizes) - 1)):
-                    stack.append(new_dfa_sizes)
-
-            # increase the offset by one at each stage so that we explore DFS in a round robin fashion
-            offset = (offset+1)%num_dfas
+                if not_dominated and nondecreasing and not_in_queue:
+                    size_q.append(new_dfa_sizes)
 
     # interleave generators on the pareto frontier until exhausted
     for dfa_product in interleave_longest(*pareto_frontier.values()):
@@ -321,7 +318,6 @@ if __name__=="__main__":
             count += 1
         for x in rejecting:
             assert any(not my_dfa.label(x) for my_dfa in my_dfas)
-        input()
 
     # my_dfa_gen = find_dfas(accepting, rejecting)
 
