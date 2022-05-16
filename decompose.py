@@ -173,6 +173,9 @@ def enumerate_pareto_frontier(
 
     while size_q: # while not empty
         dfa_sizes = size_q.popleft()
+        dominated = not all(any(new_size < front_size for new_size,front_size in zip(new_dfa_sizes,frontier_sizes)) for frontier_sizes in pareto_frontier.keys())
+        if dominated:
+            continue
         dfa_gen = find_dfa_decompositions(accepting,rejecting,num_dfas,dfa_sizes,solver_fact,sym_mode,extra_clauses,\
                 order_by_stutter,alphabet,allow_unminimized)
         try:
