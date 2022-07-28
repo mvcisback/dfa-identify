@@ -15,6 +15,7 @@ from collections import deque
 
 from more_itertools import interleave_longest
 
+
 def order_models_by_stutter(
         solver_fact,
         codecs: list[Codec],
@@ -25,79 +26,67 @@ def order_models_by_stutter(
     top_id = codecs[-1].offsets[-1] + offset_list[-1]
 
     # Compute parent relation variables that don't stutter.
-    codecs_lits = []
+    lits = []
     for codec, offset in zip(codecs, offset_list):
-        lits = []
         for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
             par_rel = codec.decode(lit)
             assert isinstance(par_rel, ParentRelationVar)
             if par_rel.node_color == par_rel.parent_color:
                 continue
             lits.append(lit + offset if lit >= 0 else lit - offset)
-        codecs_lits.append(lits)
 
     # Binary search for min non-stutter using cardinality constraints.
 
     def non_stutter_count(model) -> int:
-        return [sum(model[x - 1] > 0 for x in lits) for lits in codecs_lits]
+        return sum(model[x - 1] > 0 for x in lits)
 
-    def find_models(bounds: list[int], make_formula):
-        formulas = [make_formula(lits=lits, bound=bound, top_id=top_id) for lits, bound in zip(codecs_lits, bounds)]
+    def find_models(bound: int, make_formula):
+        formula = make_formula(lits=lits, bound=bound, top_id=top_id)
 
         with solver_fact(bootstrap_with=clauses) as solver:
-            for formula in formulas:
-                solver.append_formula(formula, no_return=True)
+            solver.append_formula(formula, no_return=True)
             if not solver.solve():
                 return
             yield from solver.enum_models()
 
-    def find_increment_index(los, his, normalize=True):
-        sign = lambda x: -1 if x < 0 else (1 if x > 0 else 0)
-        if normalize:
-            diffs = [(hi - lo) / hi if hi != 0 else sign(hi - lo) * float('inf') for lo, hi in zip(los, his)]
-        else:
-            diffs = [(hi - lo) for lo, hi in zip(los, his)]
-        max_diff = max(diffs)
-        max_diff_index = diffs.index(max_diff)
-        return max_diff_index
-
-    candidate_bounds = non_stutter_count(model) # Candidate upper bound.
-    his = candidate_bounds # Also upper bounds lower bound.
-    los = [codec.n_colors - 1 for codec in codecs] # Each node needs to be visited.
-    while any([lo < hi for lo, hi in zip(los, his)]):
-        mids = [(lo + hi) // 2 for lo, hi in zip(los, his)]
-        models = find_models(mids, CardEnc.atmost)
+    candidate_bound = non_stutter_count(model)  # Candidate upper bound.
+    hi = candidate_bound     # Also upper bounds lower bound.
+    lo = codec.n_colors - 1  # Each node needs to be visited.
+    while lo < hi:
+        mid = (lo + hi) // 2
+        models = find_models(mid, CardEnc.atmost)
         witness = next(models, None)
         if witness is not None:
-            his = non_stutter_count(witness)
-            assert all([hi <= mid for hi, mid in zip(his, mids)])
+            hi = non_stutter_count(witness)
+            assert hi <= mid
         else:
-            increment_index = find_increment_index(los, his)
-            los[increment_index] = mids[increment_index] + 1
+            lo = mid + 1
 
-    # Incrementally emit models with less stutter.
-    naive_bounds = [len(lits) for lits in codecs_lits]
-    bounds = los
-    while any([bound <= naive_bound for bound, naive_bound in zip(bounds, naive_bounds)]):
-        if any([bound > candidate_bound for bound, candidate_bound in zip(bounds, candidate_bounds)]):
-            witness = next(find_models(bounds, CardEnc.atmost), None)
+    naive_bound = len(lits)
+    for bound in range(lo, naive_bound + 1):
+        if bound > candidate_bound:
+            witness = next(find_models(bound, CardEnc.atmost), None)
             if witness is None:
                 break
-            candidate_bounds = non_stutter_count(witness)
-        yield from find_models(bounds, CardEnc.atmost) # For some reason CardEnc.equal does not work here
-        increment_index = find_increment_index(bounds, naive_bounds)
-        bounds[increment_index] += 1
+            candidate_bound = non_stutter_count(witness)
+
+        yield from find_models(bound, CardEnc.equals)
+
+
 
 def partition_by_rejecting_clauses(codec: Codec, apta: APTA) -> Clauses:
     for c in range(codec.n_colors):
         lit = codec.color_accepting(c)
         yield from ([-codec.color_node(n, c), -lit] for n in apta.rejecting)
 
+
 def get_max_var(clauses):
     return max([abs(l) for clause in clauses for l in clause])
 
+
 def offset_clauses(clauses, offset_amount):
     return [[l + offset_amount if l >= 0 else l - offset_amount for l in clause] for clause in clauses]
+ 
 
 def offset_encodings(encodings_list):
     first_codec, new_clauses_list = encodings_list[0]
@@ -112,6 +101,7 @@ def offset_encodings(encodings_list):
 
     return codec_list, offset_list, new_clauses_list
 
+
 def remove_rejecting_clauses(encodings, apta):
     for codec, clauses in encodings:
         rejecting_clauses = list(partition_by_rejecting_clauses(codec, apta))
@@ -120,6 +110,7 @@ def remove_rejecting_clauses(encodings, apta):
             if clause not in rejecting_clauses:
                 new_clauses.append(clause)
         yield codec, new_clauses
+
 
 def add_new_rejecting_clause(clauses, codecs, offset_list, apta):
     color_sizes = [range(codec.n_colors) for codec in codecs]
@@ -137,6 +128,7 @@ def add_new_rejecting_clause(clauses, codecs, offset_list, apta):
             clauses.append(new_rejecting_clause)
     return clauses
 
+
 def extract_dfas(codecs, offset_list, apta, m):
     offset_list = list(offset_list)
     offset_list.append(get_max_var([m]))
@@ -153,6 +145,7 @@ def extract_dfas(codecs, offset_list, apta, m):
 
     return sub_dfas
 
+
 def enumerate_pareto_frontier(
         accepting: list[Word],
         rejecting: list[Word],
@@ -165,7 +158,6 @@ def enumerate_pareto_frontier(
         alphabet: frozenset = None,
         allow_unminimized: bool = False,
 ) -> Iterable[DFA]:
-
     min_dfa_size = [min_dfa_sizes]*num_dfas
     size_q = deque()
     size_q.append(min_dfa_size)
@@ -177,7 +169,7 @@ def enumerate_pareto_frontier(
         if dominated:
             continue
         dfa_gen = find_dfa_decompositions(accepting,rejecting,num_dfas,dfa_sizes,solver_fact,sym_mode,extra_clauses,\
-                order_by_stutter,alphabet,allow_unminimized)
+                alphabet=alphabet,allow_unminimized=allow_unminimized, order_by_stutter=order_by_stutter)
         try:
             # yield the dfa from this generator
             next_dfa = next(dfa_gen)
@@ -199,6 +191,7 @@ def enumerate_pareto_frontier(
     # interleave generators on the pareto frontier until exhausted
     for dfa_product in interleave_longest(*pareto_frontier.values()):
         yield dfa_product
+
 
 def find_dfa_decompositions(
         accepting: list[Word],
@@ -295,6 +288,7 @@ def find_dfa_decompositions(
         return
     return
 
+
 if __name__=="__main__":
 
     accepting = ['abcd', 'acbd', 'acdb', 'cdab', 'cadb', 'cabd']
@@ -311,8 +305,10 @@ if __name__=="__main__":
     dfa_sizes = [3, 3]
         
     # my_dfas_gen = find_dfa_decompositions(accepting, rejecting, num_dfas, dfa_sizes, order_by_stutter=True)
+
     my_dfas_gen = enumerate_pareto_frontier(accepting, rejecting, num_dfas, order_by_stutter=True)
     for my_dfas in my_dfas_gen:
+
         print(my_dfas)
         count = 0
         for my_dfa in my_dfas:

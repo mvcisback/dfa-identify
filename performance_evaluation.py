@@ -1,4 +1,4 @@
-from decompose import find_dfa_decompositions, enumerate_pareto_frontier
+from dfa_identify.decompose import find_dfa_decompositions, enumerate_pareto_frontier
 from dfa_identify import find_dfas
 from dfa import dict2dfa, DFA, draw
 import itertools
@@ -226,7 +226,6 @@ if __name__ == '__main__':
         random.seed(seed)
 
         print('Running for seed', seed)
-
         exp_vary_dfas(seed, 2, 2, 10, 10)
         exp_vary_dfas(seed, 4, 2, 10, 10)
         exp_vary_dfas(seed, 8, 2, 10, 10)
