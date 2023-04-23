@@ -2,25 +2,24 @@
 name = "dfa_identify"
 readme = "README.md"
 repository = "https://github.com/mvcisback/dfa-identify"
-version = "3.9.0"
+version = "3.9.1"
 description = "Python library for identifying (learning) DFAs (automata) from labeled examples."
 authors = ["Marcell Vazquez-Chanlatte <mvc@linux.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-attrs = "^21.0.0"
-networkx = "^2.6"
+attrs = "^22.0.0"
+networkx = "^3"
 funcy = "^1.15"
-bidict = "^0.21.2"
+bidict = "^0.22"
 python-sat = "^0.1.7.dev11"
 dfa = "^4"
-more-itertools = "^8.12.0"
+more-itertools = "^9"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.3"
+pytest = "^7"
 pydot = "^1.4.2"
-pytest-flake8 = "^1.0.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
