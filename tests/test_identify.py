@@ -4,6 +4,7 @@ import dfa
 from more_itertools import take
 
 from dfa_identify import find_dfa, find_dfas
+from dfa_identify.concept_class_restrictions import enforce_chain
 
 
 def test_identify():
@@ -171,3 +172,28 @@ def test_empty_examples():
     assert len(dfas) == 2
     for i, dfa in enumerate(dfas):
         assert dfa.label(()) != (i & 1)
+
+
+def test_chain_examples():
+    dfas = find_dfas(
+        accepting=['y', 'xy'],
+        rejecting=[''],
+        alphabet={'x', 'y', 'z'},
+        extra_clauses=enforce_chain
+    )
+    universal = dfa.DFA(
+        inputs={'x', 'y', 'z'},
+        label=lambda _: True,
+        transition=lambda *_: 0,
+        start=0
+    )
+    dfas = list(dfas)
+
+    # Check that there are exactly four consistent DFAs
+    # and that applying any token either self loops
+    # or transitions to a trivial DFA.
+    assert len(dfas) == 4
+    for d1 in dfas:
+        for word in {'x', 'y', 'z'}:
+            d2 = d1.advance(word)
+            assert (d2 == d1) or (d2 == universal)
