@@ -4,7 +4,8 @@ import dfa
 from more_itertools import take
 
 from dfa_identify import find_dfa, find_dfas
-from dfa_identify.concept_class_restrictions import enforce_chain
+from dfa_identify.concept_class_restrictions import (enforce_chain,
+                                                     EnforceInvariant)
 
 
 def test_identify():
@@ -197,3 +198,18 @@ def test_chain_examples():
         for word in {'x', 'y', 'z'}:
             d2 = d1.advance(word)
             assert (d2 == d1) or (d2 == universal)
+
+
+def test_invariant_examples():
+    dfas = find_dfas(
+        accepting=['abcabc', 'cba'],
+        rejecting=['aaa', 'acb', 'aac'],
+        alphabet={'a', 'b', 'c'},
+        extra_clauses=EnforceInvariant(3)
+    )
+
+    dfa = next(dfas)
+    states = dfa.states()
+    assert 10 > len(states) > 3
+
+    assert dfa.label('')
