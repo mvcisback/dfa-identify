@@ -163,7 +163,8 @@ def dfa_id_encodings(
         apta: APTA,
         sym_mode: SymMode = None,
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        bounds: Bounds = (None, None)
+        bounds: Bounds = (None, None),
+        allow_unminimized = False
         ) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
     cgraph = apta.consistency_graph()
@@ -181,8 +182,10 @@ def dfa_id_encodings(
         high = low  # Will find something at low if one exists.
     elif high is None:
         high = max_needed
-    else:
+    elif not allow_unminimized:
         high = min(high, max_needed)
+    else:
+        high = float('inf')
 
     if high < low:
         raise ValueError('Empty bound range!')

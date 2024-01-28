@@ -82,7 +82,8 @@ def find_dfas(
     )
     encodings = dfa_id_encodings(
         apta=apta, sym_mode=sym_mode,
-        extra_clauses=extra_clauses, bounds=bounds)
+        extra_clauses=extra_clauses, bounds=bounds,
+        allow_unminimized=allow_unminimized)
 
     for codec, clauses in encodings:
         with solver_fact(bootstrap_with=clauses) as solver:
