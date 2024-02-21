@@ -39,7 +39,6 @@ smaller) consistent with the given labeled data.
 
 The returned `DFA` object is from the [dfa](https://github.com/mvcisback/dfa) library.
 
-
 ```python
 from dfa_identify import find_dfa
 
@@ -62,6 +61,40 @@ accepting = [[0], [0, 'z', 0, 0], ['z', 'z']]
 rejecting = [[0, 'z', 'z'], ['z']]
 
 my_dfa = find_dfa(accepting=accepting, rejecting=rejecting)
+```
+
+# Active learning
+
+There are also active variants of `find_dfa` and `find_dfas` called
+`find_dfa_active` and `find_dfas_active` resp. 
+
+An example from the unit tests:
+
+```python
+import dfa
+from dfa_identify import find_dfa_active
+
+
+def oracle(word):
+    return sum(word) % 2 == 0
+
+lang = find_dfa_active(alphabet=[0, 1],
+                       oracle=oracle,
+                       n_queries=20)
+assert lang == dfa.DFA(
+    inputs=[0,1],
+    label=lambda s: s,
+    transition=lambda s, c: s ^ bool(c),
+    start=True
+)
+
+# Can also send in positive and negative examples:
+lang = find_dfa_active(alphabet=[0, 1],
+                       positive=[(0,), (0,0)],
+                       negative=[(1,), (1,0)],
+                       oracle=oracle,
+                       n_queries=20)
+
 ```
 
 # Minimality
