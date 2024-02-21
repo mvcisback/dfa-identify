@@ -74,6 +74,7 @@ class APTA:
         # Construct alphabet for DFA.
         alphabet2 = {d['source'] for n, d in tree.nodes(data=True) if n != 0}
         if (alphabet is not None):
+            alphabet = frozenset(alphabet)
             if alphabet2 - alphabet:
                 raise ValueError("Symbols in examples not in alphabet")
             alphabet |= alphabet2
