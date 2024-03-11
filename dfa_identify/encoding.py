@@ -79,6 +79,8 @@ class Codec:
     n_colors: int
     n_tokens: int
     sym_mode: SymMode
+    token2char: Callable[[Int], Any] = lambda x: x,
+    initial_offset: int = 0
 
     def __attrs_post_init__(self):
         object.__setattr__(self, "counts", (
@@ -89,13 +91,20 @@ class Codec:
             (self.n_colors * (self.n_colors - 1)) // 2,       # t
             (self.n_colors - 1) * self.n_tokens,              # m
         ))
-        object.__setattr__(self, "offsets", tuple([0] + fn.lsums(self.counts)))
+        offsets = [0] + fn.lsums(self.counts)
+        offsets = [self.initial_offset + x for x in offsets]
+        object.__setattr__(self, "offsets", tuple(offsets))
 
     @staticmethod
     def from_apta(apta: APTA,
                   n_colors: int = 0,
                   sym_mode: SymMode = None) -> Codec:
-        return Codec(len(apta.nodes), n_colors, len(apta.alphabet), sym_mode)
+
+        return Codec(n_nodes=len(apta.nodes),
+                     n_colors=n_colors,
+                     n_tokens=len(apta.alphabet),
+                     sym_mode=sym_mode,
+                     token2char=apta.alphabet.inv.get)
 
     @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
@@ -153,7 +162,7 @@ class Codec:
 
         return AuxillaryVar(idx)
 
-    def extract_dfa(self, apta: APTA, model: list[int]) -> DFA:
+    def extract_dfa(self, model: list[int]) -> DFA:
         # Fill in don't cares in model.
         decoded = fn.lmap(self.decode, model)
         var_groups = groupby(decoded, type)
@@ -175,13 +184,12 @@ class Codec:
         group3 = next(var_groups)
         assert group3[0] == ParentRelationVar
         dfa_dict = {}
-        token2char = apta.alphabet.inv
         for var in group3[1]:
             if not var.true:
                 continue
             default = (var.parent_color in accepting, {})
             (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
-            char = token2char[var.token]
+            char = self.token2char(var.token)
             assert char not in char2node
             char2node[char] = var.node_color
         dfa_ = dict2dfa(dfa_dict, start=node2color[0])
