@@ -172,9 +172,6 @@ class Codec:
             assert var.node not in node2color
             node2color[var.node] = var.color
 
-            if var.color in accepting:
-                assert apta.tree.nodes[var.node].get('label', True)
-
         group3 = next(var_groups)
         assert group3[0] == ParentRelationVar
         dfa_dict = {}
