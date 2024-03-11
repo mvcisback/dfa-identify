@@ -80,7 +80,10 @@ class Codec:
     n_tokens: int
     sym_mode: SymMode
     token2char: Callable[[Int], Any] = lambda x: x,
-    initial_offset: int = 0
+
+    # Internal
+    counts: list = None
+    offsets: list = None
 
     def __attrs_post_init__(self):
         object.__setattr__(self, "counts", (
@@ -92,7 +95,6 @@ class Codec:
             (self.n_colors - 1) * self.n_tokens,              # m
         ))
         offsets = [0] + fn.lsums(self.counts)
-        offsets = [self.initial_offset + x for x in offsets]
         object.__setattr__(self, "offsets", tuple(offsets))
 
     @staticmethod
