@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from itertools import groupby
 from typing import Optional, Iterable
 
-from dfa import dict2dfa, DFA
+from dfa import DFA
 from pysat.solvers import Glucose4
 
 from pysat.card import CardEnc
@@ -91,7 +90,7 @@ def find_dfas(
                 continue
             if not order_by_stutter:
                 models = solver.enum_models()
-                yield from (extract_dfa(codec, apta, m) for m in models)
+                yield from (codec.extract_dfa(apta, m) for m in models)
                 if allow_unminimized:
                     continue
                 return
@@ -100,7 +99,7 @@ def find_dfas(
 
         # Search for maximally stuttering DFAs.
         models = order_models_by_stutter(solver_fact, codec, clauses, model)
-        yield from (extract_dfa(codec, apta, m) for m in models)
+        yield from (codec.extract_dfa(apta, m) for m in models)
         if allow_unminimized:
             continue
         return
@@ -144,53 +143,7 @@ def find_dfa(
     return next(all_dfas, None)
 
 
-def extract_dfa(codec: Codec, apta: APTA, model: list[int]) -> DFA:
-    # Fill in don't cares in model.
-    decoded = map(codec.decode, model)
-    decoded = list(decoded)
-    var_groups = groupby(decoded, type)
-
-    group1 = next(var_groups)
-    assert group1[0] == ColorAcceptingVar
-    accepting = {v.color for v in group1[1] if v.true}
-
-    group2 = next(var_groups)
-    assert group2[0] == ColorNodeVar
-
-    node2color = {}
-    for var in group2[1]:
-        if not var.true:
-            continue
-        assert var.node not in node2color
-        node2color[var.node] = var.color
-
-        if var.color in accepting:
-            assert apta.tree.nodes[var.node].get('label', True)
-
-    group3 = next(var_groups)
-    assert group3[0] == ParentRelationVar
-    dfa_dict = {}
-    token2char = apta.alphabet.inv
-    for var in group3[1]:
-        if not var.true:
-            continue
-        default = (var.parent_color in accepting, {})
-        (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
-        char = token2char[var.token]
-        assert char not in char2node
-        char2node[char] = var.node_color
-    dfa_ = dict2dfa(dfa_dict, start=node2color[0])
-
-    return DFA(
-        start=dfa_.start,
-        inputs=dfa_.inputs,
-        outputs=dfa_.outputs,
-        label=dfa_._label,
-        transition=dfa_._transition,
-    )
-
-
-__all__ = ['DFA', 'find_dfas', 'find_dfa', 'extract_dfa']
+__all__ = ['DFA', 'find_dfas', 'find_dfa']
 
 
 def order_models_by_stutter(

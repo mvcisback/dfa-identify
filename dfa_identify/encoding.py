@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from itertools import product
+from itertools import product, groupby
 from functools import wraps
 from typing import Any, Callable, Iterable, Literal, Optional, Union
 
 import attr
+from dfa import dict2dfa, DFA
 import funcy as fn
 import networkx as nx
 from networkx.algorithms.approximation.clique import max_clique
@@ -151,6 +152,50 @@ class Codec:
             return ParentRelationVar(color1, color2, token, true)
 
         return AuxillaryVar(idx)
+
+    def extract_dfa(self, apta: APTA, model: list[int]) -> DFA:
+        # Fill in don't cares in model.
+        decoded = fn.lmap(self.decode, model)
+        var_groups = groupby(decoded, type)
+
+        group1 = next(var_groups)
+        assert group1[0] == ColorAcceptingVar
+        accepting = {v.color for v in group1[1] if v.true}
+
+        group2 = next(var_groups)
+        assert group2[0] == ColorNodeVar
+
+        node2color = {}
+        for var in group2[1]:
+            if not var.true:
+                continue
+            assert var.node not in node2color
+            node2color[var.node] = var.color
+
+            if var.color in accepting:
+                assert apta.tree.nodes[var.node].get('label', True)
+
+        group3 = next(var_groups)
+        assert group3[0] == ParentRelationVar
+        dfa_dict = {}
+        token2char = apta.alphabet.inv
+        for var in group3[1]:
+            if not var.true:
+                continue
+            default = (var.parent_color in accepting, {})
+            (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
+            char = token2char[var.token]
+            assert char not in char2node
+            char2node[char] = var.node_color
+        dfa_ = dict2dfa(dfa_dict, start=node2color[0])
+
+        return DFA(
+            start=dfa_.start,
+            inputs=dfa_.inputs,
+            outputs=dfa_.outputs,
+            label=dfa_._label,
+            transition=dfa_._transition,
+        )
 
 
 # ================= Clause Generator =====================
