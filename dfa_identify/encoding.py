@@ -219,6 +219,9 @@ class Codec:
     def max_id(self):
         return self.offsets[-1]
 
+    def couple_labeling_clauses(self):
+        yield from partition_by_accepting_clauses(self, self.apta)
+
 # ================= Clause Generator =====================
 
 
@@ -356,11 +359,10 @@ ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
 def encode_dfa_id(apta,
                   codec,
                   cgraph=None,
-                  clique=None,
-                  couple_labeling_clauses=partition_by_accepting_clauses):
+                  clique=None):
     # Clauses from Table 1.                                      rows
     yield from onehot_color_clauses(codec)                      # 1, 5
-    yield from couple_labeling_clauses(codec, apta)             # 2
+    yield from codec.couple_labeling_clauses()                  # 2
     yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
     yield from onehot_parent_relation_clauses(codec)            # 4, 6
 
@@ -381,8 +383,7 @@ def dfa_id_encodings(
         sym_mode: SymMode = None,
         extra_clauses: ExtraClauseGenerator = lambda *_: (),
         bounds: Bounds = (None, None),
-        allow_unminimized = False
-        ) -> Encodings:
+        allow_unminimized = False) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
     cgraph = apta.consistency_graph()
     clique = max_clique(cgraph)
@@ -414,10 +415,10 @@ def dfa_id_encodings(
 
 def _dfa_id_encodings(apta: APTA,
                       low: int,
-                      sym_mode: SymMode = None,
-                      extra_clauses: ExtraClauseGenerator = lambda *_: (),
-                      cgraph = None,
-                      clique = None) -> Encodings:
+                      sym_mode: SymMode,
+                      extra_clauses: ExtraClauseGenerator,
+                      cgraph,
+                      clique) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
     for n_colors in fn.count(low):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
@@ -426,7 +427,6 @@ def _dfa_id_encodings(apta: APTA,
         clauses.extend(list(extra_clauses(apta, codec)))
 
         yield codec, clauses
-
 
 
 __all__ = ['Codec', 'dfa_id_encodings', 'Bounds', 'ExtraClauseGenerator']
