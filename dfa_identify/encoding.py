@@ -197,13 +197,11 @@ class Codec:
             char2node[char] = var.node_color
         dfa_ = dict2dfa(dfa_dict, start=node2color[0])
 
-        return DFA(
-            start=dfa_.start,
-            inputs=dfa_.inputs,
-            outputs=dfa_.outputs,
-            label=dfa_._label,
-            transition=dfa_._transition,
-        )
+        return DFA(start=dfa_.start,
+                   inputs=dfa_.inputs,
+                   outputs=dfa_.outputs,
+                   label=dfa_._label,
+                   transition=dfa_._transition)
 
 
 # ================= Clause Generator =====================
