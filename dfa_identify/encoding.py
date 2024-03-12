@@ -252,14 +252,19 @@ def dfa_id_encodings(
         yield codec, clauses
 
 
-def encode_dfa_id(apta, codec, cgraph, clique=None):
+def encode_dfa_id(apta, codec, cgraph=None, clique=None):
     # Clauses from Table 1.                                      rows
     yield from onehot_color_clauses(codec)                      # 1, 5
     yield from partition_by_accepting_clauses(codec, apta)      # 2
     yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
     yield from onehot_parent_relation_clauses(codec)            # 4, 6
-    yield from determination_conflicts(codec, cgraph)           # 8
-    if codec.sym_mode == "clique":
+
+    if cgraph:
+        # Disabled when conflict graph not generated, e.g.,
+        # DFA decompositions.
+        yield from determination_conflicts(codec, cgraph)       # 8
+
+    if clique and codec.sym_mode == "clique":
         yield from symmetry_breaking(codec, clique)
     elif codec.sym_mode == "bfs":
         yield from symmetry_breaking_common(codec)
