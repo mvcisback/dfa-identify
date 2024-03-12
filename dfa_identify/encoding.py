@@ -221,80 +221,6 @@ class Codec:
 
 # ================= Clause Generator =====================
 
-Bounds = tuple[Optional[int], Optional[int]]
-ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
-
-
-def dfa_id_encodings(
-        apta: APTA,
-        sym_mode: SymMode = None,
-        extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        bounds: Bounds = (None, None),
-        allow_unminimized = False
-        ) -> Encodings:
-    """Iterator of codecs and clauses for DFAs of increasing size."""
-    cgraph = apta.consistency_graph()
-    clique = max_clique(cgraph)
-    max_needed = len(apta.nodes)
-
-    low, high = bounds
-    if (low is not None) and (high is not None) and (high < low):
-        raise ValueError('Empty bound range!')
-
-    # Tighten lower bound.
-    if low is None: low = 1
-    low = max(low, len(clique))
-
-    codecs_and_clauses =_dfa_id_encodings(apta=apta,
-                                          low=low,
-                                          sym_mode=sym_mode,
-                                          extra_clauses=extra_clauses,
-                                          cgraph=cgraph,
-                                          clique=clique)
-
-    if allow_unminimized and (high is None):
-        yield from codecs_and_clauses
-        return
-
-    if high is None: high = max_needed
-
-    yield from islice(codecs_and_clauses, high - low + 1)
-
-
-def _dfa_id_encodings(apta: APTA,
-                      low: int,
-                      sym_mode: SymMode = None,
-                      extra_clauses: ExtraClauseGenerator = lambda *_: (),
-                      cgraph = None,
-                      clique = None) -> Encodings:
-    """Iterator of codecs and clauses for DFAs of increasing size."""
-    for n_colors in fn.count(low):
-        codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
-
-        clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
-        clauses.extend(list(extra_clauses(apta, codec)))
-
-        yield codec, clauses
-
-
-def encode_dfa_id(apta, codec, cgraph=None, clique=None):
-    # Clauses from Table 1.                                      rows
-    yield from onehot_color_clauses(codec)                      # 1, 5
-    yield from partition_by_accepting_clauses(codec, apta)      # 2
-    yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
-    yield from onehot_parent_relation_clauses(codec)            # 4, 6
-
-    if cgraph:
-        # Disabled when conflict graph not generated, e.g.,
-        # DFA decompositions.
-        yield from determination_conflicts(codec, cgraph)       # 8
-
-    if clique and codec.sym_mode == "clique":
-        yield from symmetry_breaking(codec, clique)
-    elif codec.sym_mode == "bfs":
-        yield from symmetry_breaking_common(codec)
-        yield from symmetry_breaking_bfs(codec)
-
 
 def onehot_color_clauses(codec: Codec) -> Clauses:
     for n in range(codec.n_nodes):  # Each vertex has at least one color.
@@ -421,6 +347,86 @@ def symmetry_breaking_bfs(codec: Codec) -> Clauses:
                         -codec.enumeration_label(token2, color2),
                         -codec.enumeration_label(token1, color2 + 1),
                     ]  # 15
+
+
+Bounds = tuple[Optional[int], Optional[int]]
+ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
+
+
+def encode_dfa_id(apta,
+                  codec,
+                  cgraph=None,
+                  clique=None,
+                  couple_labeling_clauses=partition_by_accepting_clauses):
+    # Clauses from Table 1.                                      rows
+    yield from onehot_color_clauses(codec)                      # 1, 5
+    yield from couple_labeling_clauses(codec, apta)             # 2
+    yield from colors_parent_rel_coupling_clauses(codec, apta)  # 3, 7
+    yield from onehot_parent_relation_clauses(codec)            # 4, 6
+
+    if cgraph:
+        # Disabled when conflict graph not generated, e.g.,
+        # DFA decompositions.
+        yield from determination_conflicts(codec, cgraph)       # 8
+
+    if clique and codec.sym_mode == "clique":
+        yield from symmetry_breaking(codec, clique)
+    elif codec.sym_mode == "bfs":
+        yield from symmetry_breaking_common(codec)
+        yield from symmetry_breaking_bfs(codec)
+
+
+def dfa_id_encodings(
+        apta: APTA,
+        sym_mode: SymMode = None,
+        extra_clauses: ExtraClauseGenerator = lambda *_: (),
+        bounds: Bounds = (None, None),
+        allow_unminimized = False
+        ) -> Encodings:
+    """Iterator of codecs and clauses for DFAs of increasing size."""
+    cgraph = apta.consistency_graph()
+    clique = max_clique(cgraph)
+    max_needed = len(apta.nodes)
+
+    low, high = bounds
+    if (low is not None) and (high is not None) and (high < low):
+        raise ValueError('Empty bound range!')
+
+    # Tighten lower bound.
+    if low is None: low = 1
+    low = max(low, len(clique))
+
+    codecs_and_clauses =_dfa_id_encodings(apta=apta,
+                                          low=low,
+                                          sym_mode=sym_mode,
+                                          extra_clauses=extra_clauses,
+                                          cgraph=cgraph,
+                                          clique=clique)
+
+    if allow_unminimized and (high is None):
+        yield from codecs_and_clauses
+        return
+
+    if high is None: high = max_needed
+
+    yield from islice(codecs_and_clauses, high - low + 1)
+
+
+def _dfa_id_encodings(apta: APTA,
+                      low: int,
+                      sym_mode: SymMode = None,
+                      extra_clauses: ExtraClauseGenerator = lambda *_: (),
+                      cgraph = None,
+                      clique = None) -> Encodings:
+    """Iterator of codecs and clauses for DFAs of increasing size."""
+    for n_colors in fn.count(low):
+        codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
+
+        clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
+        clauses.extend(list(extra_clauses(apta, codec)))
+
+        yield codec, clauses
+
 
 
 __all__ = ['Codec', 'dfa_id_encodings', 'Bounds', 'ExtraClauseGenerator']
