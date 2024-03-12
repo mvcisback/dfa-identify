@@ -203,6 +203,18 @@ class Codec:
                    label=dfa_._label,
                    transition=dfa_._transition)
 
+    @property
+    def non_stutter_lits(self):
+        # Compute parent relation variables that don't stutter.
+        lits = []
+        for lit in range(1 + self.offsets[2], self.offsets[3] + 1):
+            par_rel = self.decode(lit)
+            assert isinstance(par_rel, ParentRelationVar)
+            if par_rel.node_color == par_rel.parent_color:
+                continue
+            lits.append(lit)
+        return lits
+
 
 # ================= Clause Generator =====================
 

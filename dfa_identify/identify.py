@@ -178,13 +178,7 @@ def order_models_by_stutter(
     top_id = codec.offsets[-1]
 
     # Compute parent relation variables that don't stutter.
-    lits = []
-    for lit in range(1 + codec.offsets[2], codec.offsets[3] + 1):
-        par_rel = codec.decode(lit)
-        assert isinstance(par_rel, ParentRelationVar)
-        if par_rel.node_color == par_rel.parent_color:
-            continue
-        lits.append(lit)
+    lits = codec.non_stutter_lits
 
     # Binary search for min non-stutter using cardinality constraints.
 
