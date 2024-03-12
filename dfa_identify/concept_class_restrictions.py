@@ -54,7 +54,7 @@ def enforce_reach_avoid_seq(_, codec, *, with_avoid=True):
 # ================ Invariant Representation Class ====================
 
 def depth_node(codec: Codec, depth: int, color: int) -> int:
-    offset = codec.offsets[-1] + 1
+    offset = codec.max_id + 1
     return offset + depth * codec.n_colors + color
 
 """

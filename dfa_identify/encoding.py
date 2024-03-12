@@ -215,6 +215,9 @@ class Codec:
             lits.append(lit)
         return lits
 
+    @property
+    def max_id(self):
+        return self.offsets[-1]
 
 # ================= Clause Generator =====================
 

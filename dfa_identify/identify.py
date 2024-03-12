@@ -175,7 +175,9 @@ def order_models_by_stutter(
         clauses: list[list[int]],
         model: list[int],
 ) -> Iterable[DFA]:
-    top_id = codec.offsets[-1]
+    # Compute the maximum id used in codec or by extra clauses.
+    top_id = max(map(max, clauses))
+    top_id = max(codec.max_id, top_id)
 
     # Compute parent relation variables that don't stutter.
     lits = codec.non_stutter_lits
