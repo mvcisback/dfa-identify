@@ -18,6 +18,7 @@ Nodes = Iterable[Node]
 Clauses = Iterable[list[int]]
 Encodings = Iterable[Clauses]
 SymMode = Optional[Literal['bfs', 'clique']]
+Bounds = tuple[Optional[int], Optional[int]]
 
 
 # =================== Codec : int <-> variable  ====================
@@ -80,6 +81,7 @@ class Codec:
     n_tokens: int
     sym_mode: SymMode
     apta: APTA = None
+    extra_clauses: ExtraClauseGenerator = lambda *_: ()
 
     # Internal
     counts: list = None
@@ -100,13 +102,15 @@ class Codec:
     @staticmethod
     def from_apta(apta: APTA,
                   n_colors: int = 0,
-                  sym_mode: SymMode = None) -> Codec:
+                  sym_mode: SymMode = None,
+                  extra_clauses: ExtraClauseGenerator=lambda *_: ()) -> Codec:
 
         return Codec(n_nodes=len(apta.nodes),
                      n_colors=n_colors,
                      n_tokens=len(apta.alphabet),
                      sym_mode=sym_mode,
-                     apta=apta)
+                     apta=apta,
+                     extra_clauses=extra_clauses)
 
     @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
@@ -224,8 +228,11 @@ class Codec:
 
     def clauses(self, cgraph=None, clique=None):
         yield from encode_dfa_id(self.apta, self, cgraph=cgraph, clique=clique)
+        yield from self.extra_clauses(self.apta, self)
 
 # ================= Clause Generator =====================
+
+ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
 
 
 def onehot_color_clauses(codec: Codec) -> Clauses:
@@ -355,10 +362,6 @@ def symmetry_breaking_bfs(codec: Codec) -> Clauses:
                     ]  # 15
 
 
-Bounds = tuple[Optional[int], Optional[int]]
-ExtraClauseGenerator = Callable[[APTA, Codec], Clauses]
-
-
 def encode_dfa_id(apta,
                   codec,
                   cgraph=None,
@@ -424,10 +427,12 @@ def _dfa_id_encodings(apta: APTA,
                       clique) -> Encodings:
     """Iterator of codecs and clauses for DFAs of increasing size."""
     for n_colors in fn.count(low):
-        codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
+        codec = Codec.from_apta(apta,
+                                n_colors,
+                                sym_mode=sym_mode,
+                                extra_clauses=extra_clauses)
 
         clauses = list(codec.clauses(cgraph, clique))
-        clauses.extend(list(extra_clauses(apta, codec)))
 
         yield codec, clauses
 
