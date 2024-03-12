@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from itertools import product, groupby
+from itertools import islice, product, groupby
 from functools import wraps
 from typing import Any, Callable, Iterable, Literal, Optional, Union
 
@@ -225,25 +225,37 @@ def dfa_id_encodings(
     max_needed = len(apta.nodes)
 
     low, high = bounds
-
-    # Tighten lower bound.
-    if low is None:
-        low = 1
-    low = max(low, len(clique))
-
-    if (low > max_needed) and ((high is None) or (low <= high)):
-        high = low  # Will find something at low if one exists.
-    elif high is None:
-        high = max_needed
-    elif not allow_unminimized:
-        high = min(high, max_needed)
-    else:
-        high = float('inf')
-
-    if high < low:
+    if (low is not None) and (high is not None) and (high < low):
         raise ValueError('Empty bound range!')
 
-    for n_colors in range(low, high + 1):
+    # Tighten lower bound.
+    if low is None: low = 1
+    low = max(low, len(clique))
+
+    codecs_and_clauses =_dfa_id_encodings(apta=apta,
+                                          low=low,
+                                          sym_mode=sym_mode,
+                                          extra_clauses=extra_clauses,
+                                          cgraph=cgraph,
+                                          clique=clique)
+
+    if allow_unminimized and (high is None):
+        yield from codecs_and_clauses
+        return
+
+    if high is None: high = max_needed
+
+    yield from islice(codecs_and_clauses, high - low + 1)
+
+
+def _dfa_id_encodings(apta: APTA,
+                      low: int,
+                      sym_mode: SymMode = None,
+                      extra_clauses: ExtraClauseGenerator = lambda *_: (),
+                      cgraph = None,
+                      clique = None) -> Encodings:
+    """Iterator of codecs and clauses for DFAs of increasing size."""
+    for n_colors in fn.count(low):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
 
         clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
