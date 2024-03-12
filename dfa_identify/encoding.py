@@ -79,7 +79,7 @@ class Codec:
     n_colors: int
     n_tokens: int
     sym_mode: SymMode
-    token2char: Callable[[Int], Any] = lambda x: x,
+    apta: APTA = None
 
     # Internal
     counts: list = None
@@ -106,7 +106,7 @@ class Codec:
                      n_colors=n_colors,
                      n_tokens=len(apta.alphabet),
                      sym_mode=sym_mode,
-                     token2char=apta.alphabet.inv.get)
+                     apta=apta)
 
     @encoder(offset=0)
     def color_accepting(self, color: int) -> int:
@@ -186,12 +186,13 @@ class Codec:
         group3 = next(var_groups)
         assert group3[0] == ParentRelationVar
         dfa_dict = {}
+        token2char = self.apta.alphabet.inv.get if self.apta else lambda _, x: x
         for var in group3[1]:
             if not var.true:
                 continue
             default = (var.parent_color in accepting, {})
             (_, char2node) = dfa_dict.setdefault(var.parent_color, default)
-            char = self.token2char(var.token)
+            char = token2char(var.token, var.token)
             assert char not in char2node
             char2node[char] = var.node_color
         dfa_ = dict2dfa(dfa_dict, start=node2color[0])
