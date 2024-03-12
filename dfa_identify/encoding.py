@@ -222,6 +222,9 @@ class Codec:
     def couple_labeling_clauses(self):
         yield from partition_by_accepting_clauses(self, self.apta)
 
+    def clauses(self, cgraph=None, clique=None):
+        yield from encode_dfa_id(self.apta, self, cgraph=cgraph, clique=clique)
+
 # ================= Clause Generator =====================
 
 
@@ -423,7 +426,7 @@ def _dfa_id_encodings(apta: APTA,
     for n_colors in fn.count(low):
         codec = Codec.from_apta(apta, n_colors, sym_mode=sym_mode)
 
-        clauses = list(encode_dfa_id(apta, codec, cgraph, clique))
+        clauses = list(codec.clauses(cgraph, clique))
         clauses.extend(list(extra_clauses(apta, codec)))
 
         yield codec, clauses
