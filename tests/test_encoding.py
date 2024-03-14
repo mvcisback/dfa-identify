@@ -3,7 +3,7 @@ import pytest
 from itertools import product
 
 from dfa_identify.graphs import APTA
-from dfa_identify.encoding import Codec, dfa_id_encodings
+from dfa_identify.encoding import Codec
 from dfa_identify.encoding import (
     ColorAcceptingVar,
     ColorNodeVar,
@@ -92,20 +92,6 @@ def test_symm_break():
         assert i in t
     for i in range(76, 83):
         assert i in m
-
-
-def test_encode_dfa_id():
-    apta = APTA.from_examples(
-        accepting=['a', 'abaa', 'bb'],
-        rejecting=['abb', 'b'],
-    )
-
-    encodings = dfa_id_encodings(apta)
-    clauses1 = next(encodings)[1]
-    clauses2 = next(encodings)[1]
-    clauses3 = next(encodings)[1]
-    assert 1 < (len(clauses2) / len(clauses1)) < 3
-    assert 1 < (len(clauses3) / len(clauses2)) < 3
 
 
 def test_codec_errors():

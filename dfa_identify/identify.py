@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from collections import deque
+from functools import partial
 from typing import Optional, Iterable
 
+import funcy as fn
 from dfa import DFA
+from networkx.algorithms.approximation.clique import max_clique
 from pysat.solvers import Glucose4
-
 from pysat.card import CardEnc
 from more_itertools import roundrobin
 
 from dfa_identify.graphs import Word, APTA
-from dfa_identify.encoding import dfa_id_encodings, Codec, SymMode
+from dfa_identify.encoding import Codec, SymMode
 from dfa_identify.encoding import Bounds, ExtraClauseGenerator
 from dfa_identify.encoding import (
     ColorAcceptingVar,
@@ -102,30 +105,58 @@ def find_models(
     apta = APTA.from_examples(
         accepting=accepting, rejecting=rejecting, alphabet=alphabet
     )
-    encodings = dfa_id_encodings(
-        apta=apta, sym_mode=sym_mode,
-        extra_clauses=extra_clauses, bounds=bounds,
-        allow_unminimized=allow_unminimized)
 
-    for codec, clauses in encodings:
-        with solver_fact(bootstrap_with=clauses) as solver:
-            if not solver.solve():
-                continue
-            if not order_by_stutter:
-                models = solver.enum_models()
-                yield from ((codec, m) for m in models)
-                if allow_unminimized:
-                    continue
-                return
+    cgraph = apta.consistency_graph()
+    clique = max_clique(cgraph)
 
-            model = solver.get_model()  # Save for analysis below.
+    low, high = bounds
+    if (low is not None) and (high is not None) and (high < low):
+        raise ValueError('Empty bound range!')
 
-        # Search for maximally stuttering DFAs.
-        models = order_models_by_stutter(solver_fact, codec, clauses, model)
-        yield from ((codec, m) for m in models)
-        if allow_unminimized:
-            continue
-        return
+    # Tighten lower bound.
+    if low is None: low = 1
+    low = max(low, len(clique))
+
+    gen_models = partial(_gen_models,
+                         apta=apta,
+                         cgraph=cgraph,
+                         clique=clique,
+                         sym_mode=sym_mode,
+                         solver_fact=solver_fact,
+                         extra_clauses=extra_clauses,
+                         order_by_stutter=order_by_stutter)
+
+    yield from pareto_search(gen_models,
+                             num_dfas=1,
+                             min_size=low,
+                             max_size=high,
+                             upperbound=len(apta.nodes),
+                             allow_unminimized=allow_unminimized)
+
+
+def _gen_models(sizes, apta, cgraph, clique, sym_mode,
+                extra_clauses, solver_fact, order_by_stutter):
+    n_colors = sizes[0]
+    codec = Codec.from_apta(apta,
+                            n_colors,
+                            sym_mode=sym_mode,
+                            extra_clauses=extra_clauses)
+
+    clauses = list(codec.clauses(cgraph, clique))
+
+    with solver_fact(bootstrap_with=clauses) as solver:
+        if not solver.solve():
+            return
+        if not order_by_stutter:
+            models = solver.enum_models()
+            yield from ((codec, m) for m in models)
+            return
+
+        model = solver.get_model()  # Save for analysis below.
+
+    # Search for maximally stuttering DFAs.
+    models = order_models_by_stutter(solver_fact, codec, clauses, model)
+    yield from ((codec, m) for m in models)
 
 
 def find_dfa(
@@ -164,9 +195,6 @@ def find_dfa(
         order_by_stutter, alphabet
     )
     return next(all_dfas, None)
-
-
-__all__ = ['DFA', 'find_dfas', 'find_dfa']
 
 
 def order_models_by_stutter(
@@ -219,3 +247,52 @@ def order_models_by_stutter(
             candidate_bound = non_stutter_count(witness)
 
         yield from find_models(bound, CardEnc.equals)
+
+
+def pareto_search(gen_models,
+                  num_dfas: int,
+                  min_size: int = 1,
+                  max_size: int | None = None,
+                  upperbound: int | None = None,
+                  allow_unminimized: bool = False) -> Encodings:
+    if max_size is None: max_size = float('inf')
+    if upperbound is None: upperbound = float('inf')
+
+    # Initial frontier with smallest dfa sizes.
+    sizes = num_dfas * (min_size,)
+    frontier = deque([(sizes, gen_models(sizes), False)])
+
+    while frontier:  # while not empty.
+        sizes, models, emitted_solutions = frontier.popleft()
+        model = next(models, None)
+
+        if model is not None:
+            yield model
+            frontier.append((sizes, models, True))
+            continue  # Round robin frontier.
+
+        if emitted_solutions and not allow_unminimized:
+            continue
+
+        # Replace exhausted node with successors.
+        for i in range(num_dfas):
+            new_sizes = list(sizes)
+            new_sizes[i] += 1
+
+            if new_sizes[i] > max_size:
+                continue  # Terminate due to user defined max size.
+
+            if (not emitted_solutions) and (new_sizes[i] > upperbound):
+                continue  # Early terminate search for solutions.
+
+            if any(s1 > s2 for s1, s2 in fn.pairwise(new_sizes)):
+                continue  # Require increasing order.
+
+            if any(all(s1 <= s2 for s1, s2 in zip(new_sizes, sizes))
+                   for sizes in frontier):
+                continue  # (weakly) Dominated by size tuple on frontier.
+
+            frontier.append((new_sizes, gen_models(new_sizes), False))
+
+
+__all__ = ['DFA', 'find_dfas', 'find_dfa']

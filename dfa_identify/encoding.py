@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from itertools import islice, product, groupby
+from itertools import product, groupby
 from functools import wraps
 from typing import Any, Callable, Iterable, Literal, Optional, Union
 
@@ -384,57 +384,4 @@ def encode_dfa_id(apta,
         yield from symmetry_breaking_bfs(codec)
 
 
-def dfa_id_encodings(
-        apta: APTA,
-        sym_mode: SymMode = None,
-        extra_clauses: ExtraClauseGenerator = lambda *_: (),
-        bounds: Bounds = (None, None),
-        allow_unminimized = False) -> Encodings:
-    """Iterator of codecs and clauses for DFAs of increasing size."""
-    cgraph = apta.consistency_graph()
-    clique = max_clique(cgraph)
-    max_needed = len(apta.nodes)
-
-    low, high = bounds
-    if (low is not None) and (high is not None) and (high < low):
-        raise ValueError('Empty bound range!')
-
-    # Tighten lower bound.
-    if low is None: low = 1
-    low = max(low, len(clique))
-
-    codecs_and_clauses =_dfa_id_encodings(apta=apta,
-                                          low=low,
-                                          sym_mode=sym_mode,
-                                          extra_clauses=extra_clauses,
-                                          cgraph=cgraph,
-                                          clique=clique)
-
-    if allow_unminimized and (high is None):
-        yield from codecs_and_clauses
-        return
-
-    if high is None: high = max_needed
-
-    yield from islice(codecs_and_clauses, high - low + 1)
-
-
-def _dfa_id_encodings(apta: APTA,
-                      low: int,
-                      sym_mode: SymMode,
-                      extra_clauses: ExtraClauseGenerator,
-                      cgraph,
-                      clique) -> Encodings:
-    """Iterator of codecs and clauses for DFAs of increasing size."""
-    for n_colors in fn.count(low):
-        codec = Codec.from_apta(apta,
-                                n_colors,
-                                sym_mode=sym_mode,
-                                extra_clauses=extra_clauses)
-
-        clauses = list(codec.clauses(cgraph, clique))
-
-        yield codec, clauses
-
-
-__all__ = ['Codec', 'dfa_id_encodings', 'Bounds', 'ExtraClauseGenerator']
+__all__ = ['Codec', 'Bounds', 'ExtraClauseGenerator']
