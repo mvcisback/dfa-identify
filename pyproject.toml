@@ -9,11 +9,11 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-attrs = "^22.0.0"
+attrs = ">=22.0.0"
 networkx = "^3"
 funcy = "^1.15"
 bidict = "^0.22"
-python-sat = "^0.1.7.dev11"
+python-sat = "1.*"
 dfa = "^4"
 more-itertools = "^9"
 
