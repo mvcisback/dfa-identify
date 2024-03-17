@@ -66,7 +66,7 @@ def find_dfas(
                          order_by_stutter=order_by_stutter,
                          alphabet=alphabet,
                          allow_unminimized=allow_unminimized)
-    yield from (codec.extract_dfa(m) for codec, m in models)
+    yield from (codec.interpret_model(m) for codec, m in models)
 
 
 def find_models(
@@ -79,6 +79,7 @@ def find_models(
         order_by_stutter: bool = False,
         alphabet: frozenset = None,
         allow_unminimized: bool = False,
+        n_dfas: int = 1,
 ) -> Iterable[tuple[Codec, list[int]]]:
     # Convert to hashable words.
     accepting = list(map(tuple, accepting))
@@ -226,7 +227,11 @@ def order_models_by_stutter(
 
     candidate_bound = non_stutter_count(model)  # Candidate upper bound.
     hi = candidate_bound     # Also upper bounds lower bound.
-    lo = codec.n_colors - 1  # Each node needs to be visited.
+    lo = 0
+    if hasattr(codec, 'n_colors'):
+        lo = codec.n_colors - 1  # Each node needs to be visited.
+    elif hasattr(codec, 'codecs'):
+        lo = sum(c.n_colors - 1 for c in codec.codecs)
     while lo < hi:
         mid = (lo + hi) // 2
         models = find_models(mid, CardEnc.atmost)
@@ -288,8 +293,8 @@ def pareto_search(gen_models,
             if any(s1 > s2 for s1, s2 in fn.pairwise(new_sizes)):
                 continue  # Require increasing order.
 
-            if any(all(s1 <= s2 for s1, s2 in zip(new_sizes, sizes))
-                   for sizes in frontier):
+            if any(all(s1 <= s2 for s1, s2 in zip(new_sizes, prev_sizes))
+                   for prev_sizes, *_ in frontier):
                 continue  # (weakly) Dominated by size tuple on frontier.
 
             frontier.append((new_sizes, gen_models(new_sizes), False))

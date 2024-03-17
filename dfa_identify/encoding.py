@@ -168,6 +168,10 @@ class Codec:
 
         return AuxillaryVar(idx)
 
+    def interpret_model(self, model: list[int]) -> DFA:
+        # Wrap old API for backwards compat.
+        return self.extract_dfa(model)
+
     def extract_dfa(self, model: list[int]) -> DFA:
         # Fill in don't cares in model.
         decoded = fn.lmap(self.decode, model)
