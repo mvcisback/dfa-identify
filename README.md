@@ -97,6 +97,59 @@ lang = find_dfa_active(alphabet=[0, 1],
 
 ```
 
+# Learning Decomposed DFAs
+
+The is also support for learning decomposed DFAs following,
+[Learning Deterministic Finite Automata Decompositions
+ from Examples and Demonstrations. FMCAD`22](
+ https://doi.org/10.34727/2022/isbn.978-3-85448-053-2_39).
+These are tuples of DFAs whose labels are combined to determine
+the acceptence / rejection of string, e.g., via conjunction or
+disjunction.
+
+Similar to learning a monolithic dfa, this functionality can
+be accessed using `find_decomposed_dfas`. For example:
+
+```python
+from dfa_identify import find_decomposed_dfas
+accepting = ['y', 'yy', 'gy', 'bgy', 'bbgy', 'bggy']
+rejecting = ['', 'r', 'ry', 'by', 'yr', 'gr', 'rr', 'rry', 'rygy']
+
+# --------------------------------------
+# 1. Learn a disjunctive decomposition.
+# --------------------------------------
+gen_dfas = find_decomposed_dfas(accepting=accepting,
+                                rejecting=rejecting,
+                                n_dfas=2,
+                                order_by_stutter=True,
+                                decompose_via="disjunction")
+dfas = next(gen_dfas)
+
+monolithic = dfas[0] | dfas[1]  # Build DFA that is the union of languages.
+assert all(monolithic.label(w) for w in accepting)
+assert not any(monolithic.label(w) for w in rejecting)
+
+# Each dfa must reject a rejecting string.
+assert all(all(~d.label(w) for d in dfas) for w in rejecting)
+# At least one dfa must accept an accepting string.
+assert all(any(d.label(w) for d in dfas) for w in accepting)
+
+# --------------------------------------
+# 2. Learn a conjunctive decomposition.
+# --------------------------------------
+gen_dfas = find_decomposed_dfas(accepting=accepting,
+                                rejecting=rejecting,
+                                n_dfas=2,
+                                order_by_stutter=True,
+                                decompose_via="conjunction")
+dfas = next(gen_dfas)
+
+monolithic = dfas[0] & dfas[1]  # Build DFA that is the union of languages.
+assert all(monolithic.label(w) for w in accepting)
+assert not any(monolithic.label(w) for w in rejecting)
+
+```
+
 # Minimality
 
 There are two forms of "minimality" supported by `dfa-identify`.

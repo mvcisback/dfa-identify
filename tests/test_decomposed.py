@@ -41,9 +41,9 @@ def test_smoke():
     assert all(monolithic_dfa.label(w) for w in accepting)
     assert not any(monolithic_dfa.label(w) for w in rejecting)
 
-    dfas = next(decomposed.find_conjunction_of_dfas(accepting=accepting,
-                                                    rejecting=rejecting,
-                                                    n_dfas=2))
+    dfas = next(decomposed.find_decomposed_dfas(accepting=accepting,
+                                                rejecting=rejecting,
+                                                n_dfas=2))
     monolithic_dfa = reduce(op.and_, dfas)
     assert all(monolithic_dfa.label(w) for w in accepting)
     assert not any(monolithic_dfa.label(w) for w in rejecting)
@@ -54,10 +54,10 @@ def test_smoke():
 def test_fmcad_21_example():
     accepting = ['y', 'yy', 'gy', 'bgy', 'bbgy', 'bggy']
     rejecting = ['', 'r', 'ry', 'by', 'yr', 'gr', 'rr', 'rry', 'rygy']
-    dfas = next(decomposed.find_conjunction_of_dfas(accepting=accepting,
-                                                    rejecting=rejecting,
-                                                    n_dfas=2,
-                                                    order_by_stutter=True))
+    dfas = next(decomposed.find_decomposed_dfas(accepting=accepting,
+                                                rejecting=rejecting,
+                                                n_dfas=2,
+                                                order_by_stutter=True))
 
     monolithic_dfa = reduce(op.and_, dfas)
     assert all(monolithic_dfa.label(w) for w in accepting)
@@ -66,3 +66,23 @@ def test_fmcad_21_example():
     sizes = [len(d.states()) for d in dfas]
     assert all(s1 < s2 for s1, s2 in fn.pairwise(sizes))
     assert sizes == [2, 3]
+
+
+def test_disjunction():
+    accepting = ['y', 'yy', 'gy', 'bgy', 'bbgy', 'bggy']
+    rejecting = ['', 'r', 'ry', 'by', 'yr', 'gr', 'rr', 'rry', 'rygy']
+
+    gen_dfas = decomposed.find_decomposed_dfas(accepting=accepting,
+                                               rejecting=rejecting,
+                                               n_dfas=2,
+                                               order_by_stutter=True,
+                                               decompose_via="disjunction")
+
+    dfas = next(gen_dfas)
+    monolithic_dfa = reduce(op.or_, dfas)
+    assert all(monolithic_dfa.label(w) for w in accepting)
+    assert not any(monolithic_dfa.label(w) for w in rejecting)
+    # Each dfa must reject a rejecting string.
+    assert all(all(~d.label(w) for d in dfas) for w in rejecting)
+    # At least one dfa must accept an accepting string.
+    assert all(any(d.label(w) for d in dfas) for w in accepting)

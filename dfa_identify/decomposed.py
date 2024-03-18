@@ -107,7 +107,7 @@ class ConjunctiveCodec:
         yield from self.extra_clauses(self.apta, self)
 
 
-def find_conjunction_of_dfas(
+def find_decomposed_dfas(
         accepting: list[Word],
         rejecting: list[Word],
         n_dfas: int,
@@ -117,13 +117,16 @@ def find_conjunction_of_dfas(
         order_by_stutter: bool = False,
         alphabet: frozenset = None,
         allow_unminimized: bool = False,
-) -> Iterable[DFA]:
-    """Finds all conjuncive dfa combinations that are consistent with the
+        decompose_via: str = "conjunction") -> Iterable[DFA]:
+    """Finds all decomposed dfa combinations that are consistent with the
     labeled examples.
 
-    Here "conjunctive" means that the language is the intersection of
-    the dfas languages. This corresponds to all dfas needing accept accepting
-    words and at least one rejecting a rejecting word.
+    Here decomposed means that the language is represented by a tuple of
+    dfas. By default, the type of decomposition is via "conjunction", i.e.,
+    all dfas needing accept accepting words and at least one rejecting a
+    rejecting word. Setting decompose_via = "disjunction" results means
+    that at least one dfa needs to accept accepting worlds and all need to
+    reject rejecting words.
 
     Inputs:
       - accepting: A sequence of "words" to be accepted.
@@ -141,10 +144,19 @@ def find_conjunction_of_dfas(
       - alphabet: Optionally specify the alphabet the DFA should be over.
       - allow_unminimized: Continue after all minimized (equiv
           states merges) have been enumerated.
+      - decompose_via: How to interpret decomposition. Either
+        "conjunction" (intersection) or "disjunction" (union).
 
     Returns:
-      An iterable of all minimal DFA consistent with accepting and rejecting.
+      An iterable of decomposed DFAs consistent with accepting and rejecting.
     """
+    if decompose_via== "disjunction":
+        # Disjunctions implemented via de morgan's law.
+        # Swap accepting/rejecting to learn conjunction of negated dfas.
+        accepting, rejecting = rejecting, accepting
+    elif decompose_via != "conjunction":
+        raise NotImplementedError("Unsupported decomposition_type")
+
     models = find_models(accepting=accepting,
                          rejecting=rejecting,
                          n_dfas=n_dfas,
@@ -154,8 +166,12 @@ def find_conjunction_of_dfas(
                          order_by_stutter=order_by_stutter,
                          alphabet=alphabet,
                          allow_unminimized=allow_unminimized)
-    yield from (codec.interpret_model(m) for codec, m in models)
+    gen_dfas = (codec.interpret_model(m) for codec, m in models)
 
+    if decompose_via == "disjunction":
+        gen_dfas = (tuple(~d for d in dfas) for dfas in gen_dfas)
+
+    yield from gen_dfas
 
 
 def find_models(
@@ -167,7 +183,7 @@ def find_models(
         bounds: Bounds = (None, None),
         order_by_stutter: bool = False,
         alphabet: frozenset = None,
-        allow_unminimized: bool = False,
+        allow_unminimized: bool = False
 ) -> Iterable[tuple[Codec, list[int]]]:
     # Convert to hashable words.
     accepting = list(map(tuple, accepting))
@@ -240,4 +256,4 @@ def _gen_models(sizes, apta, extra_clauses, solver_fact, order_by_stutter):
     yield from ((codec, m) for m in models)
 
 
-__all__ = ['find_conjunction_of_dfas']
+__all__ = ['find_decomposed_dfas']

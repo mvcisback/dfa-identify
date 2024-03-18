@@ -207,7 +207,7 @@ class Codec:
 
         return DFA(start=dfa_.start,
                    inputs=dfa_.inputs,
-                   outputs=dfa_.outputs,
+                   outputs={True, False},
                    label=dfa_._label,
                    transition=dfa_._transition)
 
